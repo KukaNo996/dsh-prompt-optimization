@@ -1,0 +1,39 @@
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 构建产物
+dist/
+build/
+out/
+*.tgz
+
+# 日志
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 本地环境与配置
+.env
+.env.*
+*.local
+*.local.json
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 缓存
+.cache/
+.temp/
+tmp/
+coverage/
+*.tsbuildinfo
+
+# 插件运行时本地配置（可能含 API Key）
+settings.json

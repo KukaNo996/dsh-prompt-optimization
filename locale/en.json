@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Prompt Refine",
+    "description": "Adds an Optimize button under the composer that rewrites a rough request into a clear, unambiguous, well-planned professional prompt, with one-click Undo and a settings page for the model, API key and endpoint."
+  }
+}
