@@ -28,12 +28,12 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# 缓存
+# Caches and coverage
 .cache/
 .temp/
 tmp/
 coverage/
 *.tsbuildinfo
 
-# 插件运行时本地配置（可能含 API Key）
-settings.json
+# 工具运行时的本地记忆文件
+.workbuddy/
