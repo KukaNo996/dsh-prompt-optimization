@@ -1,27 +1,27 @@
 name: Release
 
-# 瑙﹀彂鏂瑰紡锛堜换閫夊叾涓€锛夛細
-# 1) 鎺ㄤ竴涓?v* 鏍囩锛歡it tag v1.0.1 && git push origin v1.0.1
-# 2) GitHub 缃戦〉 Actions 鈫?Release 鈫?Run workflow锛屾墜鍔ㄥ～鐗堟湰鍙?on:
+# Trigger (either one):
+# 1) Push a v* tag: git tag v1.1.0 && git push origin v1.1.0
+# 2) GitHub web UI: Actions -> Release -> Run workflow, fill in the version
+on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
     inputs:
       version:
-        description: '瑕佸彂甯冪殑鐗堟湰鍙凤紙涓嶅惈 v 鍓嶇紑锛夛紝鐣欑┖鍒欎娇鐢?package.json 涓殑鐗堟湰'
+        description: 'Version to publish (without the v prefix). Leave empty to use package.json'
         required: false
         type: string
       publish_npm:
-        description: '鏄惁鍚屾椂鍙戝竷鍒?npm registry'
+        description: 'Also publish to the npm registry'
         required: false
         default: true
         type: boolean
       prerelease:
-        description: '鏍囪涓洪鍙戝竷锛坧rerelease锛?
+        description: 'Mark the release as a prerelease'
         required: false
         default: false
-        type: boolean
 
 permissions:
   contents: write
@@ -39,6 +39,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -63,26 +68,23 @@ jobs:
           fi
 
           if [ "$VERSION" != "$PKG_VERSION" ]; then
-            echo "::error::鐗堟湰涓嶄竴鑷达細package.json=$PKG_VERSION锛岀洰鏍?$VERSION銆傝鍏堟墽琛?npm version $VERSION 骞舵彁浜ゃ€?
+            echo "::error::Version mismatch: package.json=$PKG_VERSION, requested=$VERSION. Run 'npm version $VERSION' and commit first."
             exit 1
           fi
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "::error::鐗堟湰鍙锋牸寮忎笉鍚堟硶锛?VERSION"
+            echo "::error::Invalid version: $VERSION"
             exit 1
           fi
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-          echo "瑙ｆ瀽鍑虹増鏈細$VERSION锛坱ag=v$VERSION锛?
+          echo "Resolved version: $VERSION"
 
       - name: Verify before release
-        run: |
-          node --check index.js
-          node --check client.js
-          node .github/scripts/validate-manifest.mjs
-          node .github/scripts/check-locales.mjs
-          node .verify/host-test.mjs
-          node .verify/client-test.mjs
+        run: npm run verify
+
+      - name: Icon geometry
+        run: python3 .verify/icon-weight.py
 
       - name: Build tarball
         id: pack
@@ -110,7 +112,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::warning::鏈厤缃?NPM_TOKEN 瀵嗛挜锛岃烦杩?npm 鍙戝竷"
+            echo "::warning::NPM_TOKEN is not configured; skipping the npm publish step"
             exit 0
           fi
           npm publish --registry=https://registry.npmjs.org --provenance --access public

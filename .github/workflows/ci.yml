@@ -31,6 +31,18 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # Icon balance is measured from a real headless render, so the runner
+      # needs Pillow and a Chromium binary. Both are preinstalled or cheap here.
+      - name: Install icon-check dependencies
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pillow
+          command -v chromium || command -v chromium-browser || command -v google-chrome
+
       - name: Syntax check
         run: |
           node --check index.js
@@ -56,6 +68,8 @@ jobs:
 
       # The optimize and undo glyphs must keep the same optical centre, height and
       # ink weight: swapping the control's state must not shift the label baseline.
+      # icon-weight.py measures a real browser render; it skips (exit 0) when no
+      # Chromium is available rather than trusting an in-house rasterizer.
       - name: Icon geometry
         run: |
           node .verify/icon-test.mjs
