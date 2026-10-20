@@ -1,47 +1,62 @@
 # dsh-promt-refine · 提示词优化
 
-> DeepSeek Harness 提示词优化插件：将自然语言的用户提示词转换为模型易懂、条理清晰的专业提示词。
+中文 | [English](README.en.md)
 
-一个 DeepSeek Harness（DSH）Web 插件：在输入框工具栏中加入「优化提示词」按钮（位于权限/计划控件与模型选择器之间、紧挨模型选择器），把口语化的自然语言需求改写成任务明确、主旨清晰、无歧义、条理清晰、计划合理、目标准确的专业提示词；一键「撤回」即可恢复原始输入。插件在「设置」中注册独立页面，可自定义优化所用的模型与 API Key，支持本地或在线 OpenAI 兼容接口。
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![DSH](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1%2B-purple)
 
-插件界面与词典均提供中文和英文。
+把输入框里那句“帮我把周报弄一下”，变成一份任务明确、主旨清晰、无歧义、计划合理、目标准确的专业提示词——点一下就完成，不满意一键撤回。
+
+这是一个 **DeepSeek Harness（DSH）Web 插件**：「优化提示词」按钮位于输入框工具栏、紧挨模型选择器；改写结果直接回填草稿，草稿不被覆盖（改写前后可随时撤回）。插件的设置页可配置模型来源、API Key 与多候选评估，支持本地或在线 OpenAI 兼容接口。
+
+---
+
+## 为什么需要它
+
+自然语言需求往往含糊：缺背景、缺范围、缺验收标准，模型只能猜。这个插件把“猜”前置成一次显式改写：
+
+- **改写目标**：任务明确 / 主旨清晰 / 无歧义 / 条理清晰 / 计划合理 / 目标准确
+- **改写原则**：忠实原意（不新增需求、不编造事实），信息不足时给标注假设或最多 3 条关键待确认问题，绝不把“反问用户”当成输出
+- **深度自适应**：短需求给短提示词，复杂需求才展开「目标 / 背景 / 任务 / 约束 / 步骤 / 输出格式 / 验收标准」结构
+
+---
 
 ## 功能
 
-- **输入框工具栏按钮**：注册在 `conversation.input.right`，即输入框工具行内、模型选择器左侧；空闲时显示「优化提示词」，点击后调用模型改写当前草稿。
-- **一键撤回**：改写成功后按钮变为「撤回」，点击后恢复优化前的原始草稿，按钮恢复为「优化提示词」。
-- **可反复优化**：撤回后可再次优化；也可以先手动修改再优化。
-- **多候选评估**：设置页可开启「多候选评估」，先并行生成 2–5 份改写结果，再由评审模型选出最好的一份；会显著增加耗时与 token 消耗，界面会明确提示。
-- **按钮文字开关**：设置页可关闭「显示『优化提示词』文字」，关闭后工具栏按钮只显示图标（撤回时仍显示「撤回」）。
-- **含引用时保护**：草稿里插入文件/会话引用芯片时按钮自动禁用，避免改写导致引用丢失。
-- **设置页**：设置 → 提示词优化，可配置：
-  - 模型来源：`跟随主程序`（默认，使用登录账户的 DeepSeek 模型或输入框当前选择的模型）或 `自定义模型`。
-  - 自定义模式：API 地址（OpenAI 兼容，如 `https://api.deepseek.com/v1`、`http://127.0.0.1:11434/v1`）、模型名、API Key、温度、最大输出 token。
-  - 跟随模式：可选填 provider / model 覆盖「自动选择」，留空即自动。
-  - 自定义优化指令（system prompt）与「测试连接」。
-  - 多候选评估开关与候选份数。
-- **API Key 安全**：优先存放在宿主凭据服务（`keyStorage: credential`），`settings.json` 只记录是否已配置；没有凭据服务时降级为写入 `$DSH_HOME/dsh-promt-refine/settings.json`（POSIX 下 0600）。浏览器端始终只能看到掩码。
-- **请求防护**：所有接口需要页面从 `/status` 取得的请求票据，并校验 Origin；模型调用按来源限流（10 次/分钟）。请求可随页面关闭或切换会话立即中止。
+| 功能 | 说明 |
+| --- | --- |
+| **一键优化** | 工具栏按钮点击后调用模型改写当前草稿并回填 |
+| **一键撤回** | 改写后按钮变为「撤回」，点击恢复原文，再点又可优化 |
+| **多候选评估** | 可开启：并行生成 2–5 份结果，再由评审模型选出最优；会明确提示 token 成本 |
+| **模型来源可配置** | `跟随主程序`（默认）或 `自定义模型`（任意 OpenAI 兼容端点） |
+| **本地模型支持** | 由 Host 直接请求端点，不受浏览器 CORS 限制，Ollama / LM Studio / vLLM 均可 |
+| **按钮精简** | 可关闭按钮文字，仅显示图标（撤回时仍显示文字） |
+| **引用保护** | 草稿含文件/会话引用芯片时自动禁用，避免改写丢失引用 |
+| **失败安全** | 草稿在请求期间被修改则不覆盖本次结果；请求可随页面关闭/切会话立即中止 |
+
+插件界面与词典均提供**中文和英文**。
+
+---
 
 ## 安装
 
-### 从插件管理器安装（推荐）
+### 方式一：插件管理器（推荐）
 
-在 DSH 中打开「设置 → 插件 → 市场 / Discover」，搜索 `dsh-promt-refine` 并安装；或在插件管理器中填入包坐标：
+在 DSH 中打开「设置 → 插件」安装，或使用包坐标：
 
 ```text
 plugin_manager install_bundle target=dsh-promt-refine@1.0.0
 ```
 
-需要国内网络加速时可指定镜像源：
+国内网络可指定镜像源：
 
 ```text
 plugin_manager install_bundle target=dsh-promt-refine@1.0.0 registry=https://registry.npmmirror.com
 ```
 
-安装后插件行 `dsh-promt-refine` 会出现在「设置 → 插件」，设置页出现在「设置 → 提示词优化」。首次使用请在设置页确认模型来源（默认「跟随主程序」）。
+> 尚未发布到 npm registry 时，请使用下面的源码安装方式。
 
-### 从源码安装
+### 方式二：源码安装
 
 ```bash
 git clone https://github.com/KukaNo996/dsh-promt-refine.git
@@ -51,73 +66,154 @@ git clone https://github.com/KukaNo996/dsh-promt-refine.git
 plugin_manager install_bundle target=<克隆目录的绝对路径>
 ```
 
+安装后：插件行出现在「设置 → 插件」，设置页出现在「设置 → 提示词优化」。
+
+---
+
+## 快速开始
+
+1. 在输入框写下需求，例如 `帮我把周报弄一下`
+2. 点击工具栏「优化提示词」
+3. 查看改写结果，满意直接发送；不满意点「撤回」
+4. 首次使用若提示模型不可用，前往「设置 → 提示词优化」选择模型来源
+
+---
+
+## 设置项
+
+| 设置 | 作用 | 默认 |
+| --- | --- | --- |
+| 模型来源 | `跟随主程序` 或 `自定义模型` | 跟随主程序 |
+| API 地址 | 自定义模式的 OpenAI 兼容端点，如 `http://127.0.0.1:11434/v1` | — |
+| 模型名称 | 自定义模式必填；跟随模式留空表示自动 | — |
+| Provider（可选） | 跟随模式下覆盖自动选择的 provider | 自动 |
+| API Key | 自定义端点密钥；本地模型可留空 | — |
+| 温度 | 0–2，越低越稳定 | 0.3 |
+| 最大输出 token | 0 表示交给模型默认值 | 0 |
+| 优化指令 | 自定义 system prompt，留空用内置指令 | 内置 |
+| 多候选评估 | 开关 + 候选份数（2–5） | 关闭 / 1 份 |
+| 显示按钮文字 | 关闭后工具栏只显示图标 | 开启 |
+
+可随时用「测试连接」验证当前配置；配置未保存到可调用状态时，保存仍会成功，但优化会返回可读的错误提示。
+
+### 模型解析顺序（跟随模式）
+
+1. 设置页显式填写的 provider + model
+2. 当前会话最近一次请求使用的模型（即模型选择器所选）
+3. 主程序默认模型（设置 → 模型）
+4. 兜底 `deepseek-account` / `deepseek-flash`
+
+---
+
 ## 环境要求
 
-- DeepSeek Harness 0.2.1 及以上（插件使用 `conversation.input.right`、`settings.section` 插槽与 `inputActions.setDraft`）。
-- 「跟随主程序」模式需要已登录 DeepSeek 账户，或已在「设置 → 模型」配置可用模型；否则请改用「自定义模型」。
+- **DeepSeek Harness 0.2.1 及以上**（依赖 `conversation.input.right`、`settings.section` 插槽与 `inputActions.setDraft`）
+- 「跟随主程序」模式需已登录 DeepSeek 账户或已配置可用模型；否则请改用「自定义模型」
 
-## 模型解析顺序（跟随模式）
+---
 
-1. 设置页显式填写的 provider + model；
-2. 当前会话最近一次请求使用的模型（即输入框模型选择器所选模型）；
-3. 主程序默认模型（设置 → 模型）；
-4. 兜底 `deepseek-account` / `deepseek-flash`。
+## 隐私与安全
 
-若账户未登录且未配置自定义模型，优化会返回可读的错误提示，页面不会丢失草稿。
+- **API Key 存储**：优先放入宿主凭据服务（`keyStorage: credential`），`settings.json` 只记录“是否已配置”；没有凭据服务时降级写入 `$DSH_HOME/dsh-promt-refine/settings.json`（POSIX 下 `0600`）。旧版本明文会自动迁移并清除。
+- **浏览器侧**：永远只能拿到掩码（如 `sk-••••1234`），任何接口都不返回明文。
+- **接口防护**：除 `/status` 外所有路由要求进程级随机票据（页面从 `/status` 获取）并校验 Origin；模型路由按来源限流 10 次/分钟。
+- **数据去向**：被优化的草稿文本会**发送给你配置的模型端点**（跟随模式即主程序所用 provider）。请勿在需要保密的草稿上使用不可信的第三方端点。
+- **请求中止**：页面关闭、切换会话或再次点击时立即中止在途请求，Host 返回 499 并停止计费。
+
+---
 
 ## 实现说明
 
-- **Host 半**（`index.js`）：注册同源前缀路由 `/dsh-promt-refine/*`，负责设置读写、连接测试与模型调用。跟随模式走 DSH 的 `llm` 服务（自带账户鉴权与重试）；自定义模式由 Host 直接请求 OpenAI 兼容的 `/chat/completions`，因此不受浏览器 CORS 限制，本地模型也能用。
-  - 鉴权：除 `/status` 外所有路由都要求 `x-dsh-promt-refine-ticket`（进程启动随机生成，页面从 `/status` 获取），并校验 Origin；模型路由按 `来源 IP + UA` 限流 10 次/分钟。
-  - 密钥：优先 `ctx.credentials`；`settings.json` 只保存非密字段，旧版本明文自动迁移并清除。
-  - 评估：`candidates > 1` 时并行生成 N 份草稿，再发一次评审请求（只返回编号）；评审失败或无有效编号时退回确定性评分（结构 + 数字/标识符保留率 + 长度比）。
-  - 取消：`req.on('close')` 触发 AbortSignal 透传给 `llm.stream` / `fetch`，返回 499。
-- **Client 半**（`client.js`）：以 `window.__ModuleLoader__.load` 形式注册两个 slot：
-  - `conversation.input.right`：输入框工具行内、模型选择器左侧的优化 / 撤回按钮（含错误气泡）；
-  - `settings.section`：设置页面（显示开关、多候选评估、模型与密钥配置）。
-  草稿读写使用宿主注入的标准属性 `inputActions` / `useInput`，不改 DOM；`occurrences` 非空时禁用优化。
-- 样式只使用 `--dsw-alias-*` 主题 token；文案通过 Client locale 服务注册中英文字典。
-- 打包只包含 `index.js`、`client.js`、`cordis.patch.yml`、`locale/*.json`、`icon.svg`；测试脚本与本文档留在仓库、不进包。
+### Host 半（`index.js`）
+
+注册同源前缀路由 `/dsh-promt-refine/*`：
+
+| 路由 | 方法 | 用途 |
+| --- | --- | --- |
+| `/status` | GET | 插件健康状态 + 下发请求票据 |
+| `/settings` | GET / POST | 读取 / 保存设置（密钥只写不读） |
+| `/optimize` | POST | 执行改写（含多候选评估） |
+| `/test` | POST | 测试连接 |
+
+- 跟随模式走 DSH `llm` 服务（自带账户鉴权与重试）；自定义模式由 Host 请求 OpenAI 兼容 `/chat/completions`
+- 评估：`candidates > 1` 时并行生成 N 份，再发一次只返回编号的评审请求；评审失败或无有效编号时退回确定性评分（结构 + 数字/标识符保留率 + 长度比）
+- 取消：`req.on('close')` 触发 AbortSignal，透传给 `llm.stream` / `fetch`
+
+### Client 半（`client.js`）
+
+以 `window.__ModuleLoader__.load` 注册两个 slot：
+
+- `conversation.input.right`：工具栏优化 / 撤回按钮与错误气泡
+- `settings.section`：设置页面
+
+草稿读写使用宿主注入的 `inputActions` / `useInput`，不改 DOM；`occurrences` 非空时禁用优化。样式只用 `--dsw-alias-*` 主题 token。
+
+### 打包内容
+
+只包含 `index.js`、`client.js`、`cordis.patch.yml`、`locale/*.json`、`icon.svg`；测试脚本与文档留在仓库、不进包。
+
+---
 
 ## 开发
 
 ```bash
-node .verify/host-test.mjs    # Host 半：路由、票据/限流、密钥存储、取消、多候选评估
-node .verify/client-test.mjs  # Client 半：模块工厂与两个插槽注册
+node --check index.js
+node --check client.js
+node .verify/host-test.mjs     # Host：路由、票据/限流、密钥存储、取消、多候选评估（44 项）
+node .verify/client-test.mjs   # Client：模块工厂与插槽注册（14 项）
 ```
 
 ### 提交代码
 
-本目录已是完整的 Git 仓库，`origin` 指向 <https://github.com/KukaNo996/dsh-promt-refine>，默认分支 `main`。
+本目录已是完整 Git 仓库，`origin` 指向 <https://github.com/KukaNo996/dsh-promt-refine>，默认分支 `main`。
 
 ```bash
-git status              # 查看改动
-git add -A -- . ':!.workbuddy'   # 或按文件单独 add
+git status
+git add -A -- . ':!.workbuddy'
 git commit -m "fix: 说明改了什么"
 git push origin main
 ```
 
-- **Windows 已配置本地代理**：仓库级 `http.proxy = http://127.0.0.1:7897`（Clash 等本地代理端口）。若你的代理端口不同，执行：
+- **本机代理**：仓库级 `http.proxy = http://127.0.0.1:7897`。端口不同时：
 
   ```bash
-  git config --local http.proxy http://127.0.0.1:<你的端口>
-  git config --local https.proxy http://127.0.0.1:<你的端口>
+  git config --local http.proxy http://127.0.0.1:<端口>
+  git config --local https.proxy http://127.0.0.1:<端口>
   ```
 
-  网络恢复直连后可用 `git config --local --unset http.proxy` 与 `--unset https.proxy` 去掉。
-- **凭据**：Git Credential Manager 已保存 GitHub 账号，推送时通常无需再次输入；若失效执行 `git push` 按提示登录即可。
-- **提交身份**：已在本仓库配置 `user.name=KukaNo996`、`user.email=1274666494@qq.com`。
-- **换行**：`core.autocrlf=false`，避免 Windows 下把整仓文件改成 CRLF 产生无意义 diff。
-- `.workbuddy/`、`*.tgz`、`node_modules/` 已在 `.gitignore` 中忽略，不会被误提交。
+  可直连后：`git config --local --unset http.proxy` 与 `--unset https.proxy`。
+- **凭据**：Git Credential Manager 已保存 GitHub 账号；失效时按 `git push` 提示登录。
+- **身份与换行**：仓库级 `user.name=KukaNo996`、`user.email=1274666494@qq.com`、`core.autocrlf=false`。
+- `.workbuddy/`、`*.tgz`、`node_modules/` 已在 `.gitignore` 忽略。
+
+---
+
+## 常见问题
+
+**Q：按钮点了没反应/报“模型不可用”？**
+A：账户未登录或未配置模型。到「设置 → 提示词优化」改用「自定义模型」，填写 API 地址与模型名后点「测试连接」。
+
+**Q：优化后按钮为什么是灰的？**
+A：草稿中存在文件/会话引用芯片，纯文本改写会丢失引用，因此禁用；移除引用后可继续优化。
+
+**Q：多候选评估值得开吗？**
+A：值得在“结果要交付给别人”的场景开启；N 份候选成本约为单次的 `N + 1` 倍 token，耗时也更长。
+
+**Q：改写结果被扩写得过多？**
+A：默认指令已要求“篇幅与原文信息量匹配”。仍不满意可在设置页自定义「优化指令」，明确字数上限或删减段落。
+
+---
 
 ## 已知限制
 
-- 优化与撤回以**纯文本**重写草稿；含文件/会话引用芯片时优化按钮会禁用（撤回也只恢复文本）。
-- 「输入框当前选择的模型」取自该会话最近一次请求的 `request/header`；如果刚切换模型还没发送过消息，会使用主程序默认模型。
-- 自定义接口目前仅支持 OpenAI 兼容的 `/chat/completions`（本地 Ollama、LM Studio、vLLM、DeepSeek、OpenAI 等均可）。
-- 多候选评估的成本约为单次的 `N + 1` 倍 token，适合对质量要求高、不追求速度的场景。
-- 本插件仅在 Web GUI 中提供界面；未在 Electron 独立窗口中验证。
+- 优化与撤回以**纯文本**重写草稿；含引用芯片时按钮禁用（撤回也只恢复文本）
+- 「输入框当前选择的模型」取自会话最近一次请求的 `request/header`；刚切换模型且未发送时会使用默认模型
+- 自定义接口目前仅支持 OpenAI 兼容 `/chat/completions`
+- 多候选评估成本约为单次 `N + 1` 倍 token，适合重质量、不重速度的场景
+- 仅在 Web GUI 验证；未在 Electron 独立窗口中验证
+
+---
 
 ## 许可证
 
-[MIT](LICENSE)
+[MIT](LICENSE) © 2026 KukaNo996
