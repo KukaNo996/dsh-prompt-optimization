@@ -77,7 +77,7 @@ plugin.apply(ctx)
 await new Promise((resolve) => setTimeout(resolve, 100))
 
 // --- 1. Settings moved to the new directory --------------------------------
-const migrated = JSON.parse(await readFile(join(home, 'dsh-prompt-refine', 'settings.json'), 'utf8'))
+const migrated = JSON.parse(await readFile(join(home, 'dsh-prompt-optimization', 'settings.json'), 'utf8'))
 check('settings migrated to new directory', migrated.model === 'legacy-model', migrated)
 check('settings keep every field', migrated.temperature === 0.42 && migrated.maxTokens === 777 && migrated.candidates === 3, migrated)
 check('settings keep custom instruction', migrated.systemPrompt === 'legacy instruction', migrated)
@@ -128,20 +128,20 @@ async function call(method, url, body) {
   return { status: state.status, body: parsed }
 }
 
-const status = await call('GET', '/dsh-prompt-refine/status')
+const status = await call('GET', '/dsh-prompt-optimization/status')
 check('status responds on the new route', status.status === 200, status)
 check('status reports a configured key', status.body.hasApiKey === true, status.body)
-check('key re-homed to the new credential reference', credentialStore.has('DSH_PROMPT_REFINE_API_KEY'), [...credentialStore.keys()])
+check('key re-homed to the new credential reference', credentialStore.has('DSH_PROMPT_OPTIMIZATION_API_KEY'), [...credentialStore.keys()])
 check('old credential reference removed', !credentialStore.has('DSH_PROMT_REFINE_API_KEY'), [...credentialStore.keys()])
 
 // --- 3. A second start must not clobber the migrated file ------------------
-await writeFile(join(home, 'dsh-prompt-refine', 'settings.json'), JSON.stringify({ ...migrated, model: 'edited-after-migration' }, null, 2), 'utf8')
+await writeFile(join(home, 'dsh-prompt-optimization', 'settings.json'), JSON.stringify({ ...migrated, model: 'edited-after-migration' }, null, 2), 'utf8')
 await new Promise((resolve) => setTimeout(resolve, 50))
 const plugin2 = await import(new URL('../index.js', import.meta.url).href + '?second')
 const ctx2 = makeContext({ credentials })
 plugin2.apply(ctx2)
 await new Promise((resolve) => setTimeout(resolve, 100))
-const afterRestart = JSON.parse(await readFile(join(home, 'dsh-prompt-refine', 'settings.json'), 'utf8'))
+const afterRestart = JSON.parse(await readFile(join(home, 'dsh-prompt-optimization', 'settings.json'), 'utf8'))
 check('existing settings survive a restart', afterRestart.model === 'edited-after-migration', afterRestart)
 
 const failed = results.filter((item) => !item.ok)

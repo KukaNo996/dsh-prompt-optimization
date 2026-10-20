@@ -1,4 +1,4 @@
 - insert:
-    - id: dsh-prompt-refine
-      name: dsh-prompt-refine
+    - id: dsh-prompt-optimization
+      name: dsh-prompt-optimization
       config: {}

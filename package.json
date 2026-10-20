@@ -1,5 +1,5 @@
 {
-  "name": "dsh-prompt-refine",
+  "name": "dsh-prompt-optimization",
   "version": "1.2.1",
   "private": false,
   "description": "DeepSeek Harness prompt-refinement plugin: rewrite a rough request into a clear, professional prompt, with one-click undo and a configurable model",
@@ -14,13 +14,13 @@
   ],
   "author": "KukaNo996",
   "license": "MIT",
-  "homepage": "https://github.com/KukaNo996/dsh-promt-refine",
+  "homepage": "https://github.com/KukaNo996/dsh-prompt-optimization",
   "bugs": {
-    "url": "https://github.com/KukaNo996/dsh-promt-refine"
+    "url": "https://github.com/KukaNo996/dsh-prompt-optimization"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/KukaNo996/dsh-promt-refine"
+    "url": "https://github.com/KukaNo996/dsh-prompt-optimization"
   },
   "publishConfig": {
     "access": "public"

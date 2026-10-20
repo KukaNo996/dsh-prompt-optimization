@@ -1,4 +1,4 @@
-# dsh-prompt-refine · 提示词优化
+# dsh-prompt-optimization · 提示词优化
 
 中文 | [English](README.en.md)
 
@@ -46,21 +46,21 @@
 在 DSH 中打开「设置 → 插件」安装，或使用包坐标：
 
 ```text
-plugin_manager install_bundle target=dsh-prompt-refine
+plugin_manager install_bundle target=dsh-prompt-optimization
 ```
 
 国内网络可指定镜像源：
 
 ```text
-plugin_manager install_bundle target=dsh-prompt-refine registry=https://registry.npmmirror.com
+plugin_manager install_bundle target=dsh-prompt-optimization registry=https://registry.npmmirror.com
 ```
 
-需要固定版本时写完整版本号，例如 `target=dsh-prompt-refine@1.1.0`。
+需要固定版本时写完整版本号，例如 `target=dsh-prompt-optimization@1.1.0`。
 
 ### 方式二：源码安装
 
 ```bash
-git clone https://github.com/KukaNo996/dsh-promt-refine
+git clone https://github.com/KukaNo996/dsh-prompt-optimization
 ```
 
 ```text
@@ -115,7 +115,7 @@ plugin_manager install_bundle target=<克隆目录的绝对路径>
 
 ## 隐私与安全
 
-- **API Key 存储**：优先放入宿主凭据服务（`keyStorage: credential`），`settings.json` 只记录“是否已配置”；没有凭据服务时降级写入 `$DSH_HOME/dsh-prompt-refine/settings.json`（POSIX 下 `0600`）。旧版本明文会自动迁移并清除。
+- **API Key 存储**：优先放入宿主凭据服务（`keyStorage: credential`），`settings.json` 只记录“是否已配置”；没有凭据服务时降级写入 `$DSH_HOME/dsh-prompt-optimization/settings.json`（POSIX 下 `0600`）。旧版本明文会自动迁移并清除。
 - **浏览器侧**：永远只能拿到掩码（如 `sk-••••1234`），任何接口都不返回明文。
 - **接口防护**：除 `/status` 外所有路由要求进程级随机票据（页面从 `/status` 获取）并校验 Origin；模型路由按来源限流 10 次/分钟。
 - **数据去向**：被优化的草稿文本会**发送给你配置的模型端点**（跟随模式即主程序所用 provider）。请勿在需要保密的草稿上使用不可信的第三方端点。
@@ -127,7 +127,7 @@ plugin_manager install_bundle target=<克隆目录的绝对路径>
 
 ### 主机侧（`index.js`）
 
-注册同源前缀路由 `/dsh-prompt-refine/*`：
+注册同源前缀路由 `/dsh-prompt-optimization/*`：
 
 | 路由 | 方法 | 用途 |
 | --- | --- | --- |
@@ -177,7 +177,7 @@ npm run verify
 
 ### 提交代码
 
-本目录已是完整 Git 仓库，`origin` 指向 <https://github.com/KukaNo996/dsh-promt-refine>，默认分支 `main`。
+本目录已是完整 Git 仓库，`origin` 指向 <https://github.com/KukaNo996/dsh-prompt-optimization>，默认分支 `main`。
 
 ```bash
 git status

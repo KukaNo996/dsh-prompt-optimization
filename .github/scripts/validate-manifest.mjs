@@ -21,7 +21,7 @@ function check(name, condition, detail) {
 
 const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 
-check('name is dsh-prompt-refine', pkg.name === 'dsh-prompt-refine', pkg.name)
+check('name is dsh-prompt-optimization', pkg.name === 'dsh-prompt-optimization', pkg.name)
 check('version matches semver', /^\d+\.\d+\.\d+(-[\w.-]+)?$/.test(pkg.version), pkg.version)
 check('package is public', pkg.private !== true, pkg.private)
 check('type is module', pkg.type === 'module', pkg.type)

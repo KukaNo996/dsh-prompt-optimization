@@ -12,7 +12,7 @@ const version = process.argv[2] || '1.2.1'
 const outDir = process.argv[3] || '.'
 
 const owner = 'KukaNo996'
-const repo = 'dsh-prompt-refine'
+const repo = 'dsh-prompt-optimization'
 const api = `https://api.github.com/repos/${owner}/${repo}/releases/tags/v${version}`
 
 async function main() {
@@ -26,7 +26,7 @@ async function main() {
   for (const asset of release.assets) {
     const url = `https://api.github.com/repos/${owner}/${repo}/releases/assets/${asset.id}`
     const response = await fetch(url, {
-      headers: { 'user-agent': 'dsh-prompt-refine-fetch', accept: 'application/octet-stream' },
+      headers: { 'user-agent': 'dsh-prompt-optimization-fetch', accept: 'application/octet-stream' },
       redirect: 'follow',
     })
     if (!response.ok) throw new Error(`${asset.name}: HTTP ${response.status}`)
@@ -42,8 +42,8 @@ async function main() {
   }
 
   // Cross-check the published .sha256 file against the tarball as well.
-  const sumFile = join(outDir, `dsh-prompt-refine-${version}.tgz.sha256`)
-  const tarball = join(outDir, `dsh-prompt-refine-${version}.tgz`)
+  const sumFile = join(outDir, `dsh-prompt-optimization-${version}.tgz.sha256`)
+  const tarball = join(outDir, `dsh-prompt-optimization-${version}.tgz`)
   try {
     const expected = (await readFile(sumFile, 'utf8')).trim().split(/\s+/)[0]
     const bytes = await readFile(tarball)
@@ -56,7 +56,7 @@ async function main() {
 }
 
 async function fetchJson(url) {
-  const response = await fetch(url, { headers: { 'user-agent': 'dsh-prompt-refine-fetch' } })
+  const response = await fetch(url, { headers: { 'user-agent': 'dsh-prompt-optimization-fetch' } })
   if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`)
   return response.json()
 }

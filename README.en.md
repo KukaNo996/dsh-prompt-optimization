@@ -1,4 +1,4 @@
-# dsh-prompt-refine · Prompt Refine
+# dsh-prompt-optimization · Prompt Refine
 
 [中文](README.md) | English
 
@@ -46,21 +46,21 @@ The UI and dictionaries ship in **Chinese and English**.
 Open **Settings → Plugins** in DSH, or install by package coordinate:
 
 ```text
-plugin_manager install_bundle target=dsh-prompt-refine
+plugin_manager install_bundle target=dsh-prompt-optimization
 ```
 
 For a faster registry inside mainland China:
 
 ```text
-plugin_manager install_bundle target=dsh-prompt-refine registry=https://registry.npmmirror.com
+plugin_manager install_bundle target=dsh-prompt-optimization registry=https://registry.npmmirror.com
 ```
 
-Pin an exact version when you need one, e.g. `target=dsh-prompt-refine@1.1.0`.
+Pin an exact version when you need one, e.g. `target=dsh-prompt-optimization@1.1.0`.
 
 ### Option 2 — From source
 
 ```bash
-git clone https://github.com/KukaNo996/dsh-promt-refine
+git clone https://github.com/KukaNo996/dsh-prompt-optimization
 ```
 
 ```text
@@ -115,7 +115,7 @@ Use **Test connection** to validate the current settings. Incomplete settings st
 
 ## Privacy & security
 
-- **API key storage**: stored in the host credential service when available (`keyStorage: credential`); `settings.json` only records whether a key exists. Without that service the key falls back to `$DSH_HOME/dsh-prompt-refine/settings.json` with mode `0600`. Plaintext keys from older versions are migrated automatically and removed.
+- **API key storage**: stored in the host credential service when available (`keyStorage: credential`); `settings.json` only records whether a key exists. Without that service the key falls back to `$DSH_HOME/dsh-prompt-optimization/settings.json` with mode `0600`. Plaintext keys from older versions are migrated automatically and removed.
 - **Browser**: only ever receives a mask such as `sk-••••1234`; no route returns the plaintext.
 - **Endpoint protection**: every route except `/status` requires a per-process random ticket (fetched from `/status`) and validates `Origin`; model routes are rate limited to 10 calls/minute per source.
 - **Where data goes**: the draft text is **sent to the configured model endpoint** (the app's own provider in follow mode). Do not optimize sensitive drafts against an untrusted third-party endpoint.
@@ -127,7 +127,7 @@ Use **Test connection** to validate the current settings. Incomplete settings st
 
 ### Host half (`index.js`)
 
-Registers a same-origin prefix route `/dsh-prompt-refine/*`:
+Registers a same-origin prefix route `/dsh-prompt-optimization/*`:
 
 | Route | Method | Purpose |
 | --- | --- | --- |
@@ -177,7 +177,7 @@ npm run verify
 
 ### Committing
 
-This directory is a complete Git repository with `origin` at <https://github.com/KukaNo996/dsh-promt-refine> and default branch `main`.
+This directory is a complete Git repository with `origin` at <https://github.com/KukaNo996/dsh-prompt-optimization> and default branch `main`.
 
 ```bash
 git status
