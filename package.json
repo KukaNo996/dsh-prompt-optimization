@@ -14,13 +14,13 @@
   ],
   "author": "KukaNo996",
   "license": "MIT",
-  "homepage": "https://github.com/KukaNo996/dsh-prompt-optimization",
+  "homepage": "https://github.com/KukaNo996/dsh-prompt-optimization#readme",
   "bugs": {
-    "url": "https://github.com/KukaNo996/dsh-prompt-optimization"
+    "url": "https://github.com/KukaNo996/dsh-prompt-optimization/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/KukaNo996/dsh-prompt-optimization"
+    "url": "git+https://github.com/KukaNo996/dsh-prompt-optimization.git"
   },
   "publishConfig": {
     "access": "public"
