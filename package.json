@@ -23,7 +23,8 @@
     "url": "git+https://github.com/KukaNo996/dsh-prompt-optimization.git"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "type": "module",
   "main": "index.js",
