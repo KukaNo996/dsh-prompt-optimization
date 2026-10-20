@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Syntax check
+        run: |
+          node --check index.js
+          node --check client.js
+
+      - name: Manifest and asset validation
+        run: node .github/scripts/validate-manifest.mjs
+
+      - name: Locale consistency
+        run: node .github/scripts/check-locales.mjs
+
+      - name: Host half tests
+        run: node .verify/host-test.mjs
+
+      - name: Client half tests
+        run: node .verify/client-test.mjs
+
+      - name: Localization tests
+        run: node .verify/locale-test.mjs
+
+      - name: Pack contents assertion
+        run: |
+          npm pack --dry-run --json > pack.json
+          node .github/scripts/check-pack.mjs pack.json
+
+      - name: No secrets in package
+        run: node .github/scripts/scan-secrets.mjs
+
+  smoke:
+    name: Install smoke test
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Pack and inspect tarball
+        run: |
+          npm pack --json > pack.json
+          node -e "
+            const p = require('./pack.json')[0];
+            console.log('package size:', p.size, 'unpacked:', p.unpackedSize);
+            const names = p.files.map(f => f.path);
+            const required = ['index.js','client.js','cordis.patch.yml','locale/en.json','locale/zh.json','icon.svg','package.json'];
+            const missing = required.filter(r => !names.includes(r));
+            if (missing.length) { console.error('missing:', missing); process.exit(1); }
+            const forbidden = names.filter(n => n.startsWith('.verify/') || n.startsWith('.github/'));
+            if (forbidden.length) { console.error('forbidden:', forbidden); process.exit(1); }
+            console.log('tarball contents OK');
+          "

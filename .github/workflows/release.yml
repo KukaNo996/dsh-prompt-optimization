@@ -1,0 +1,129 @@
+name: Release
+
+# 瑙﹀彂鏂瑰紡锛堜换閫夊叾涓€锛夛細
+# 1) 鎺ㄤ竴涓?v* 鏍囩锛歡it tag v1.0.1 && git push origin v1.0.1
+# 2) GitHub 缃戦〉 Actions 鈫?Release 鈫?Run workflow锛屾墜鍔ㄥ～鐗堟湰鍙?on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '瑕佸彂甯冪殑鐗堟湰鍙凤紙涓嶅惈 v 鍓嶇紑锛夛紝鐣欑┖鍒欎娇鐢?package.json 涓殑鐗堟湰'
+        required: false
+        type: string
+      publish_npm:
+        description: '鏄惁鍚屾椂鍙戝竷鍒?npm registry'
+        required: false
+        default: true
+        type: boolean
+      prerelease:
+        description: '鏍囪涓洪鍙戝竷锛坧rerelease锛?
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          RAW_TAG="${GITHUB_REF_NAME}"
+          INPUT_VERSION="${{ inputs.version }}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="${INPUT_VERSION#v}"
+          elif [[ "$RAW_TAG" == v* ]]; then
+            VERSION="${RAW_TAG#v}"
+          else
+            VERSION="$PKG_VERSION"
+          fi
+
+          if [ "$VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::鐗堟湰涓嶄竴鑷达細package.json=$PKG_VERSION锛岀洰鏍?$VERSION銆傝鍏堟墽琛?npm version $VERSION 骞舵彁浜ゃ€?
+            exit 1
+          fi
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::鐗堟湰鍙锋牸寮忎笉鍚堟硶锛?VERSION"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "瑙ｆ瀽鍑虹増鏈細$VERSION锛坱ag=v$VERSION锛?
+
+      - name: Verify before release
+        run: |
+          node --check index.js
+          node --check client.js
+          node .github/scripts/validate-manifest.mjs
+          node .github/scripts/check-locales.mjs
+          node .verify/host-test.mjs
+          node .verify/client-test.mjs
+
+      - name: Build tarball
+        id: pack
+        run: |
+          set -euo pipefail
+          npm pack --json > pack.json
+          TARBALL="$(node -p "require('./pack.json')[0].filename")"
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          ls -lh "$TARBALL"
+
+      - name: Generate checksums
+        run: |
+          TARBALL="${{ steps.pack.outputs.tarball }}"
+          sha256sum "$TARBALL" > "$TARBALL.sha256"
+          cat "$TARBALL.sha256"
+
+      - name: Extract release notes
+        run: |
+          node .github/scripts/release-notes.mjs "${{ steps.version.outputs.version }}" > release-notes.md
+          head -40 release-notes.md
+
+      - name: Publish to npm
+        if: ${{ github.event_name == 'push' || inputs.publish_npm }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::warning::鏈厤缃?NPM_TOKEN 瀵嗛挜锛岃烦杩?npm 鍙戝竷"
+            exit 0
+          fi
+          npm publish --registry=https://registry.npmjs.org --provenance --access public
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body_path: release-notes.md
+          prerelease: ${{ inputs.prerelease || false }}
+          files: |
+            ${{ steps.pack.outputs.tarball }}
+            ${{ steps.pack.outputs.tarball }}.sha256
+          fail_on_unmatched_files: true
+          generate_release_notes: false
