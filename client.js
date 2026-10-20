@@ -40,6 +40,9 @@ window.__ModuleLoader__.load({
       "settings.candidatesOption": "{count} 份",
       "settings.clearKey": "清除已保存的 Key",
       "settings.composerNote": "此模式下由输入框右下角的选择决定模型，无需填写模型名称。",
+      "settings.contextAware": "根据上下文优化（Beta）",
+      "settings.contextAwareCost": "注意：会多调用一次模型来压缩上下文，token 消耗相应增加。",
+      "settings.contextAwareHint": "开启后，会先压缩当前会话的上下文，再据此改写提示词，使结果更贴合你的表达习惯与关注点。",
       "settings.description": "把输入框里的自然语言需求改写为任务明确、主旨清晰、无歧义、条理清晰、计划合理、目标准确的专业提示词。",
       "settings.evaluate": "多候选评估（更慢、更贵）",
       "settings.evaluateCost": "注意：每次优化要调用模型 {count} 次生成 + 1 次评审，token 消耗约为单次的 {count2} 倍。",
@@ -124,6 +127,9 @@ window.__ModuleLoader__.load({
       "settings.candidatesOption": "{count} 份",
       "settings.clearKey": "清除已儲存的 Key",
       "settings.composerNote": "此模式下由輸入框右下角的選擇決定模型，無需填寫模型名稱。",
+      "settings.contextAware": "根據上下文最佳化（Beta）",
+      "settings.contextAwareCost": "注意：會多呼叫一次模型來壓縮上下文，token 消耗相應增加。",
+      "settings.contextAwareHint": "開啟後，會先壓縮目前工作階段的上下文，再據此改寫提示詞，使結果更貼合你的表達習慣與關注點。",
       "settings.description": "把輸入框中的自然語言需求改寫為任務明確、主旨清晰、無歧義、條理清晰、計劃合理、目標準確的專業提示詞。",
       "settings.evaluate": "多候選評估（較慢、較貴）",
       "settings.evaluateCost": "注意：每次優化要呼叫模型 {count} 次生成 + 1 次評審，token 消耗約為單次的 {count2} 倍。",
@@ -208,6 +214,9 @@ window.__ModuleLoader__.load({
       "settings.candidatesOption": "{count} 件",
       "settings.clearKey": "保存したキーを削除",
       "settings.composerNote": "このモードでは入力枠の右下角の選択でモデルが決まります。モデル名を入力する必要はありません。",
+      "settings.contextAware": "コンテキストに基づいて最適化（Beta）",
+      "settings.contextAwareCost": "注意：コンテキストを圧縮するためモデル呼び出しが 1 回増え、token 使用量も増えます。",
+      "settings.contextAwareHint": "有効にすると、現在のセッションのコンテキストをまず要約・圧縮し、それに基づいてプロンプトを書き換えます。あなたの表現の癖や関心に近い結果になります。",
       "settings.description": "コンポーザー内の曖昧な依頼を、タスクが明確で、主旨がはっきりし、曖昧さがなく、筋道立った計画と正確な目標を持つ専門プロンプトに書き換えます。",
       "settings.evaluate": "複数候補の評価（低速・高コスト）",
       "settings.evaluateCost": "注意：1 回の最適化で生成 {count} 回 + 審査 1 回のモデル呼び出しが発生し、トークン消費は単発の約 {count2} 倍になります。",
@@ -292,6 +301,9 @@ window.__ModuleLoader__.load({
       "settings.candidatesOption": "{count} drafts",
       "settings.clearKey": "Clear the saved key",
       "settings.composerNote": "In this mode the model comes from the composer selection, so there is no model name to fill in.",
+      "settings.contextAware": "Optimize with context (Beta)",
+      "settings.contextAwareCost": "Note: this adds one model call to compress the context, and the token cost goes up accordingly.",
+      "settings.contextAwareHint": "When on, the current conversation is compressed first and the prompt is rewritten against it, so the result fits how you actually phrase things and what you care about.",
       "settings.description": "Rewrite a rough request in the composer into a professional prompt with a clear task, purpose, plan, and acceptance criteria.",
       "settings.evaluate": "Multi-candidate evaluation (slower, costlier)",
       "settings.evaluateCost": "Note: each run costs {count} generation calls plus one judge call — roughly {count2}× the tokens of a single pass.",
@@ -485,6 +497,100 @@ window.__ModuleLoader__.load({
       return request(path, { method: 'POST', body: JSON.stringify(body || {}), signal })
     }
 
+    /**
+     * One streaming plugin request.
+     *
+     * The Host answers with newline-delimited JSON: `delta` events carry pieces
+     * of the refined prompt, a final `done` event carries the cleaned text.
+     * `onDelta` is called for every piece so the composer can fill in while the
+     * model is still writing.
+     *
+     * A ticket rejection is retried the same way as for a plain request, but a
+     * retry can only happen before the first byte: once the stream has started
+     * the response cannot be replayed.
+     */
+    async function streamRequest(path, body, onDelta, signal) {
+      const init = { method: 'POST', body: JSON.stringify(body || {}), signal }
+      const send = (ticket) =>
+        fetch(apiUrl(path), {
+          credentials: 'same-origin',
+          ...init,
+          headers: {
+            'content-type': 'application/json',
+            'x-dsh-prompt-optimization': '1',
+            ...(ticket ? { 'x-dsh-prompt-optimization-ticket': ticket } : {}),
+            ...(init.headers || {}),
+          },
+        })
+
+      let ticket = await fetchTicket(false)
+      let response = await send(ticket)
+      if (response.status === 403) {
+        ticket = await fetchTicket(true)
+        if (ticket) response = await send(ticket)
+      }
+      if (!response.ok) {
+        let message = `HTTP ${response.status}`
+        try {
+          const payload = await response.json()
+          if (payload?.error?.message) message = payload.error.message
+        } catch {
+          // A non-JSON error body keeps the status-based message.
+        }
+        throw new RequestError(message, response.status)
+      }
+      if (!response.body) {
+        // No streaming body (very old browser): fall back to the plain route.
+        const payload = await postJson(path.replace(/\/stream$/, ''), body, signal)
+        if (typeof payload?.optimized === 'string') await onDelta(payload.optimized)
+        return payload
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let result = null
+      let streamError = ''
+      try {
+        for (;;) {
+          const { value, done } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          let boundary = buffer.indexOf('\n')
+          while (boundary !== -1) {
+            const line = buffer.slice(0, boundary).trim()
+            buffer = buffer.slice(boundary + 1)
+            if (!line) continue
+            let event
+            try {
+              event = JSON.parse(line)
+            } catch {
+              continue
+            }
+            if (event?.type === 'delta' && typeof event.text === 'string') {
+              await onDelta(event.text)
+            } else if (event?.type === 'done') {
+              result = event
+            } else if (event?.type === 'error') {
+              streamError = event.message || '模型调用失败。'
+            }
+          }
+        }
+      } catch (error) {
+        if (isAbortError(error)) throw error
+        throw new RequestError(errorMessage(error), 0)
+      } finally {
+        try {
+          reader.releaseLock()
+        } catch {
+          // The reader may already be released after an error.
+        }
+      }
+      if (streamError) throw new RequestError(streamError, 502)
+      if (!result) throw new RequestError('模型没有返回结果。', 502)
+      return result
+    }
+
     function errorMessage(error) {
       return error instanceof Error ? error.message : String(error)
     }
@@ -666,13 +772,14 @@ window.__ModuleLoader__.load({
      *
      * `HINT_CHUNK` characters are written per tick, so a ~30 character hint takes
      * about a second to type — brisk enough to feel instant, slow enough to read as
-     * typed rather than pasted. The hold is the full 5 s the user asked for. The
-     * erase uses a smaller chunk and a slightly longer tick so the deletion is the
-     * part the eye can follow, instead of the text vanishing in one frame.
+     * typed rather than pasted. The hold is 2 s: long enough to read the hint once,
+     * short enough that the control does not feel stuck. The erase uses a smaller
+     * chunk and a slightly longer tick so the deletion is the part the eye can
+     * follow, instead of the text vanishing in one frame.
      */
     const HINT_CHUNK = 2
     const HINT_TYPE_MS = 34
-    const HINT_HOLD_MS = 5000
+    const HINT_HOLD_MS = 2000
     const HINT_ERASE_CHUNK = 1
     const HINT_ERASE_MS = 46
     const toolbarCss = `
@@ -906,21 +1013,56 @@ window.__ModuleLoader__.load({
         inflight.current = controller
         setBusy(true)
         setMessage(null)
+        // The streamed text is written into the composer as it arrives. The
+        // original draft is remembered first so the control can offer "undo"
+        // even while the stream is still running.
+        setOriginal(source)
         try {
-          const result = await postJson('/optimize', { text: source, sessionId }, controller.signal)
+          // The stream writes the refined prompt straight into the draft. The
+          // user can watch it being written, which turns a long wait into
+          // something readable.
+          let streamed = ''
+          // Once the user edits the draft themselves, the stream stops writing:
+          // their text must not be overwritten by the next delta.
+          let userTookOver = false
+          const result = await streamRequest(
+            '/optimize/stream',
+            { text: source, sessionId },
+            async (piece) => {
+              if (!mounted.current) return
+              if (userTookOver) return
+              // The draft holds either the original text or what the stream has
+              // written so far. Anything else means the user typed.
+              if (draftRef.current !== source && draftRef.current !== streamed) {
+                userTookOver = true
+                return
+              }
+              streamed += piece
+              // The Host sends the raw model output while it streams; the
+              // final `done` event carries the cleaned version.
+              inputActions.setDraft(streamed)
+            },
+            controller.signal,
+          )
           const optimized = typeof result.optimized === 'string' ? result.optimized.trim() : ''
           if (!optimized) throw new Error(t('tool.empty'))
           if (!mounted.current) return
-          if (draftRef.current !== source) {
+          if (userTookOver) {
+            // The user typed while the model was writing; their text wins and the
+            // result is not applied.
             setMessage({ level: 'info', text: t('tool.draftChanged') })
+            setOriginal(null)
             return
           }
-          setOriginal(source)
           setRefined(optimized)
           inputActions.setDraft(optimized)
         } catch (error) {
           // A cancelled or superseded request is not a failure worth a message.
           if (isAbortError(error) || !mounted.current) return
+          // The partial stream may have replaced the draft; restore the original
+          // so a failed optimization never leaves half a prompt behind.
+          if (draftRef.current !== source) inputActions.setDraft(source)
+          setOriginal(null)
           setMessage({ level: 'error', text: t('tool.failed', { message: errorMessage(error) }) })
         } finally {
           if (inflight.current === controller) inflight.current = null
@@ -1051,6 +1193,7 @@ window.__ModuleLoader__.load({
       evaluate: false,
       candidates: '3',
       updateSource: '',
+      contextAware: false,
     }
 
     function toForm(settings) {
@@ -1071,6 +1214,7 @@ window.__ModuleLoader__.load({
         evaluate: candidates > 1,
         candidates: String(candidates > 1 ? candidates : 3),
         updateSource: settings.updateSource || '',
+        contextAware: settings.contextAware === true,
       }
     }
 
@@ -1140,6 +1284,7 @@ window.__ModuleLoader__.load({
         // One candidate = plain single-pass refinement; the toggle only adds work.
         candidates: form.evaluate ? form.candidates : '1',
         updateSource: form.updateSource.trim(),
+        contextAware: form.contextAware,
       })
 
       /**
@@ -1314,6 +1459,31 @@ window.__ModuleLoader__.load({
               ),
             )
           : null,
+
+        // Context-aware rewriting (Beta). Off by default: it costs one extra
+        // model call and sends conversation content to the model.
+        h(
+          'div',
+          { className: 'dsh-pr-row' },
+          h(
+            'div',
+            { style: { flex: '1 1 260px', minWidth: 0 } },
+            h('div', { className: 'dsh-pr-row-title' }, t('settings.contextAware')),
+            h('div', { className: 'dsh-pr-row-desc' }, t('settings.contextAwareHint')),
+            form.contextAware
+              ? h('div', { className: 'dsh-pr-row-desc dsh-pr-cost', role: 'note' }, t('settings.contextAwareCost'))
+              : null,
+          ),
+          h('button', {
+            type: 'button',
+            role: 'switch',
+            'aria-checked': form.contextAware ? 'true' : 'false',
+            'aria-label': t('settings.contextAware'),
+            className: 'dsh-pr-switch',
+            'data-on': form.contextAware ? 'true' : 'false',
+            onClick: () => update('contextAware', !form.contextAware),
+          }, h('span', { className: 'dsh-pr-switch-thumb' })),
+        ),
 
         h(
           'div',

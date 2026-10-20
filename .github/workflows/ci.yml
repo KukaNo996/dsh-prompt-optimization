@@ -69,6 +69,9 @@ jobs:
       - name: Composer model mode
         run: node .verify/composer-mode-test.mjs
 
+      - name: Streaming and context-aware mode
+        run: node .verify/stream-context-test.mjs
+
       - name: Localization tests
         run: node .verify/locale-test.mjs
 

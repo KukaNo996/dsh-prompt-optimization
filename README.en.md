@@ -31,7 +31,9 @@ Natural-language requests are usually vague: no context, no scope, no acceptance
 | **Configurable model source** | *Follow composer* (default), *Follow the app* or *Custom model* (any OpenAI-compatible endpoint) |
 | **Local models** | Requests are made by the host side, so browser CORS never blocks Ollama / LM Studio / vLLM |
 | **Show hint text** | Off by default (icon only); when on, both "Optimize prompt" and "Undo" labels are shown |
-| **Empty-draft guidance** | Clicking optimize on an empty draft types a hint into the composer, holds it for 5 seconds, then erases it character by character; typing cancels it immediately |
+| **Empty-draft guidance** | Clicking optimize on an empty draft types a hint into the composer, holds it for 2 seconds, then erases it character by character; typing cancels it immediately |
+| **Streaming output** | The rewritten prompt is written into the composer as the model produces it; with multi-candidate evaluation only the selected draft is streamed |
+| **Optimize with context (Beta)** | Optionally compress the current conversation first and rewrite against it, so the result fits your usual phrasing; off by default |
 | **Reference guard** | Disabled when the draft contains file/session reference chips, which a plain-text rewrite would drop |
 | **Failure-safe** | If the draft changes during the request the result is not applied; in-flight work aborts on page close or session switch |
 | **Update check** | Check for a newer version from the settings page with a **configurable update source** (npm registry / GitHub Releases / any mirror); reads the version only and installs nothing |
@@ -96,8 +98,29 @@ After installation the plugin row appears under **Settings → Plugins**, and it
 | Multi-candidate evaluation | Toggle plus candidate count (2–5) | off / 1 |
 | Show hint text | When on the control shows the "Optimize prompt" and "Undo" labels; when off it shows icons only | off (icon only) |
 | Update source | Address used by the update check; empty tries the built-in order | automatic |
+| Optimize with context (Beta) | Compress the conversation first, then rewrite against it | off |
 
 Use **Test connection** to validate the current settings. Incomplete settings still save; the optimization call then returns a readable error instead of failing silently.
+
+### Streaming output
+
+Once the model starts producing, the rewritten prompt is written into the composer **as it arrives** instead of after the whole response.
+
+- **Single candidate**: text shows up while the model is still writing it.
+- **Multi-candidate**: the drafts are generated and judged first, and only the **selected** draft is streamed. A candidate that was not chosen never reaches the composer.
+- If you edit the draft while it streams, the writes stop at once and your text is never overwritten.
+- A failed request restores the original draft instead of leaving half a prompt behind.
+
+### Optimizing with context (Beta)
+
+The **Optimize with context (Beta)** switch is **off by default**. When on, the plugin:
+
+1. reads the messages **you actually typed** in this session (the host-injected runtime context does not count);
+2. asks the model to compress them into a short brief of your phrasing, topics and exclusions;
+3. rewrites the prompt against that brief.
+
+**Only the compressed brief is sent with the rewrite; the raw transcript never is.**
+Compression costs one extra model call, so the token usage goes up; if it fails the rewrite falls back to the normal path.
 
 ### Checking for updates
 
@@ -201,6 +224,7 @@ node .verify/icon-test.mjs            # Icon structure contract (16 checks)
 node .verify/locale-test.mjs          # Locale resolution and key parity (36 checks)
 node .verify/translate-sim.mjs        # Actual output per language (14 checks)
 node .verify/rename-migration-test.mjs # Rename migration: settings and key survive (9 checks)
+node .verify/stream-context-test.mjs # Streaming output and context-aware mode (28 checks)
 node .verify/update-test.mjs          # Update check: source parsing, semver, timeout, auth (37 checks)
 python3 .verify/icon-weight.py        # Icon visual balance from a real 16px render
 ```

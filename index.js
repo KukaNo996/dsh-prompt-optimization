@@ -64,6 +64,9 @@ const DEFAULT_SETTINGS = Object.freeze({
   updateCheckEnabled: false,
   // Empty means "use the built-in source order"; a value overrides it.
   updateSource: '',
+  // Context-aware rewriting is a Beta: off by default, because it costs one
+  // extra model call and sends conversation content to the model.
+  contextAware: false,
 })
 
 // ---------------------------------------------------------------------------
@@ -516,6 +519,7 @@ function normalizeSettings(raw, current) {
     // A malformed source is dropped on save rather than persisted, so the next
     // check falls back to the built-in order instead of failing silently.
     updateSource: asString(input.updateSource, base.updateSource).trim(),
+    contextAware: typeof input.contextAware === 'boolean' ? input.contextAware : base.contextAware === true,
   }
 }
 
@@ -806,6 +810,149 @@ async function latestSessionSelection(ctx, sessionId) {
   return undefined
 }
 
+// ---------------------------------------------------------------------------
+// Conversation context (Beta)
+//
+// The context-aware mode lets the model see what the user has been asking for in
+// this session, so the rewritten prompt matches their usual phrasing, level of
+// detail and topic instead of being rewritten in a vacuum.
+//
+// The raw transcript is far too long to send verbatim, so it is compressed
+// first. The compression is done by the same model that performs the rewrite,
+// in a separate cheap call, and its result is what the rewrite actually reads.
+// ---------------------------------------------------------------------------
+
+/** How much context text is fed to the compression call. */
+const CONTEXT_MAX_CHARS = 12_000
+/** How much of the compressed summary is fed to the rewrite call. */
+const CONTEXT_SUMMARY_MAX_CHARS = 2_000
+/** Timeout for the compression call. */
+const CONTEXT_TIMEOUT_MS = 45_000
+
+/**
+ * Read the plain text of a session message event.
+ * `content` holds blocks; only the `text` kind carries the conversation.
+ */
+function messageEventText(event) {
+  const content = event?.data?.content
+  if (!Array.isArray(content)) return ''
+  return content
+    .map((block) => (typeof block?.text === 'string' ? block.text : ''))
+    .join('\n')
+    .trim()
+}
+
+/**
+ * Collect the conversation transcript of a session.
+ *
+ * Only messages the user actually typed are considered. The host injects
+ * several synthetic user messages (the runtime-context snapshot, the
+ * time-context notice, model-change notices); they describe the environment,
+ * not the user's intent, and would teach the rewrite the wrong thing.
+ */
+async function collectSessionContext(ctx, sessionId) {
+  if (!sessionId) return ''
+  try {
+    const controller = ctx.get('sessionController')
+    if (!controller?.inspect) return ''
+    const inspection = await controller.inspect(sessionId)
+    const events = inspection?.events
+    if (!Array.isArray(events)) return ''
+
+    const turns = []
+    for (const event of events) {
+      if (event?.type === 'user/message') {
+        // `source.kind` is 'user' for typed messages; the rest are injected.
+        if (event?.data?.source?.kind !== 'user') continue
+        const text = messageEventText(event)
+        if (text) turns.push({ role: 'user', text })
+      } else if (event?.type === 'assistant/message') {
+        const content = event?.data?.message?.content
+        if (!Array.isArray(content)) continue
+        const text = content
+          .filter((block) => block?.type === 'text' && typeof block.text === 'string')
+          .map((block) => block.text)
+          .join('\n')
+          .trim()
+        if (text) turns.push({ role: 'assistant', text })
+      }
+    }
+    if (!turns.length) return ''
+
+    // Keep the most recent turns: recent intent matters more than the start of
+    // a long session, and the budget is spent on what the user is doing now.
+    const rendered = []
+    let budget = CONTEXT_MAX_CHARS
+    for (let index = turns.length - 1; index >= 0 && budget > 0; index -= 1) {
+      const turn = turns[index]
+      const line = `${turn.role === 'user' ? '用户' : '助手'}：${turn.text}\n`
+      if (line.length > budget) {
+        // A single oversized turn is truncated from its tail, which holds the
+        // actual ask far more often than its preamble.
+        rendered.unshift(`…${line.slice(line.length - budget)}`)
+        break
+      }
+      rendered.unshift(line)
+      budget -= line.length
+    }
+    return rendered.join('').trim()
+  } catch {
+    // Context is a nice-to-have; a session that cannot be read must not break
+    // the rewrite.
+    return ''
+  }
+}
+
+/**
+ * Instruction for the compression pass.
+ *
+ * The output is consumed by the rewrite call, so it must be a compact brief and
+ * not a summary to show a human: preferences and phrasing habits are the parts
+ * worth keeping, prose is not.
+ */
+const CONTEXT_INSTRUCTION = [
+  '你是会话上下文分析器。用户会给你一段对话记录，请压缩成一份供提示词改写器参考的简报。',
+  '',
+  '只保留与「用户想要什么样的提示词」有关的信息：',
+  '- 用户的表达习惯、常用措辞、语言风格、详略偏好；',
+  '- 用户反复涉及的主题、技术栈、目标与约束；',
+  '- 用户已经否定过或明确排除的做法。',
+  '',
+  '严格控制在 400 字以内，不要罗列对话内容，不要评价，不要写总结性套话。',
+  '如果记录里没有可用的偏好信息，只输出「（无可用上下文）」。',
+].join('\n')
+
+/**
+ * Compress the transcript into a short brief the rewrite can use.
+ * @returns {Promise<string>} the brief, or '' when there is nothing to add
+ */
+async function compressSessionContext(ctx, settings, transcript, timeoutMs, sessionId, signal) {
+  if (!transcript.trim()) return ''
+  const message = `<对话记录>\n${transcript}\n</对话记录>`
+  try {
+    const result =
+      settings.mode === 'custom'
+        ? await callCustomEndpoint(settings, CONTEXT_INSTRUCTION, message, timeoutMs, signal)
+        : await callAccountModel(ctx, settings, CONTEXT_INSTRUCTION, message, timeoutMs, sessionId, signal)
+    const brief = cleanModelOutput(result.text)
+    if (!brief || brief.includes('（无可用上下文）') || brief.includes('无可用上下文')) return ''
+    return brief.slice(0, CONTEXT_SUMMARY_MAX_CHARS)
+  } catch {
+    // A failed compression must not fail the rewrite; the user still gets a
+    // normal refinement, just without the context flavour.
+    return ''
+  }
+}
+
+/**
+ * Build the user message for the rewrite, optionally preceded by the context brief.
+ */
+function buildContextualUserMessage(text, contextBrief) {
+  const request = buildUserMessage(text)
+  if (!contextBrief) return request
+  return `<用户偏好上下文>\n${contextBrief}\n</用户偏好上下文>\n\n${request}\n\n请在忠实原意的前提下，参考上述偏好调整表达方式、详略与用词。`
+}
+
 /**
  * Resolve the account-mode model: explicit override, then session, then default, then account fallback.
  */
@@ -907,7 +1054,189 @@ async function callAccountModel(ctx, settings, instruction, userText, timeoutMs,
 }
 
 /**
- * Build an AbortSignal that follows the client connection of one request. A
+ * Stream the account-route model, emitting each text delta to `onDelta`.
+ *
+ * The account route already produces deltas, so the refined prompt can reach the
+ * composer while the model is still writing it. The caller receives the final
+ * cleaned text as well, because the cleanup (fence stripping, preamble removal)
+ * only works on the complete response.
+ */
+async function streamAccountModel(ctx, settings, instruction, userText, timeoutMs, sessionId, signal, onDelta) {
+  const llm = ctx.get('llm')
+  if (!llm) {
+    throw new HttpError(503, 'llm_unavailable', '主程序的 LLM 服务不可用，请在设置页改用自定义模型。')
+  }
+  const selection =
+    settings.mode === 'composer'
+      ? await resolveComposerSelection(ctx, sessionId)
+      : await resolveAccountSelection(ctx, settings, sessionId)
+  if (signal?.aborted) throw new HttpError(499, 'aborted', '请求已取消。')
+  const guard = timeoutSignal(signal, timeoutMs)
+  let output = ''
+  let failure
+  try {
+    const options = {
+      provider: selection.provider,
+      model: selection.model,
+      system: instruction,
+      messages: [{ role: 'user', content: [{ type: 'text', text: userText }] }],
+      signal: guard.signal,
+    }
+    if (settings.temperature > 0) options.temperature = settings.temperature
+    for await (const chunk of llm.stream(options)) {
+      if (chunk?.type === 'text-delta') {
+        output += chunk.text
+        await onDelta(chunk.text)
+      } else if (chunk?.type === 'finish') {
+        if (chunk.reason?.kind === 'error') failure = chunk.reason.failure
+        else if (chunk.reason?.kind === 'aborted') failure = chunk.reason.failure ?? { message: '请求被取消' }
+      }
+    }
+  } catch (error) {
+    if (error instanceof HttpError) throw error
+    if (signal?.aborted) throw new HttpError(499, 'aborted', '请求已取消。')
+    const message = error?.message || String(error)
+    throw new HttpError(502, 'account_request_failed', `模型调用失败：${message}`)
+  } finally {
+    guard.dispose()
+  }
+  if (signal?.aborted) throw new HttpError(499, 'aborted', '请求已取消。')
+  if (failure) {
+    throw new HttpError(
+      502,
+      'account_request_failed',
+      `模型调用失败：${failure.message || '未知错误'}${failure.code ? `（${failure.code}）` : ''}`,
+      { status: failure.status },
+    )
+  }
+  if (!output.trim()) throw new HttpError(502, 'empty_model_output', '模型没有返回文本内容。')
+  return { text: cleanModelOutput(output), model: { ...selection } }
+}
+
+/**
+ * Stream a custom OpenAI-compatible endpoint, emitting each delta to `onDelta`.
+ *
+ * The endpoint is asked for `stream: true` and the SSE body is parsed
+ * incrementally. OpenAI-compatible servers differ in how they terminate a
+ * stream (`data: [DONE]`, a trailing `data:` line, or a closed connection), so
+ * the parser accepts all of them and simply stops at the end of the body.
+ */
+async function streamCustomEndpoint(settings, instruction, userText, timeoutMs, signal, onDelta) {
+  const url = chatCompletionsUrl(settings.baseURL)
+  const headers = { 'content-type': 'application/json', accept: 'text/event-stream' }
+  if (settings.apiKey) headers.authorization = `Bearer ${settings.apiKey}`
+  const body = {
+    model: settings.model,
+    messages: [
+      { role: 'system', content: instruction },
+      { role: 'user', content: userText },
+    ],
+    temperature: settings.temperature,
+    stream: true,
+  }
+  if (settings.maxTokens > 0) body.max_tokens = settings.maxTokens
+  const guard = timeoutSignal(signal, timeoutMs)
+  let response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: guard.signal,
+    })
+  } catch (error) {
+    if (signal?.aborted) throw new HttpError(499, 'aborted', '请求已取消。')
+    const reason = error?.name === 'AbortError' ? '请求超时' : error?.message || String(error)
+    throw new HttpError(502, 'custom_request_failed', `无法连接模型接口：${reason}`)
+  } finally {
+    guard.dispose()
+  }
+  if (!response.ok) {
+    const raw = await response.text().catch(() => '')
+    throw new HttpError(502, 'custom_response_error', `模型接口返回 HTTP ${response.status}：${raw.slice(0, 400)}`)
+  }
+  if (!response.body) {
+    // No streaming body: fall back to a single non-streaming call.
+    const result = await callCustomEndpoint(settings, instruction, userText, timeoutMs, signal)
+    await onDelta(result.text)
+    return result
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let output = ''
+  let stopped = false
+  try {
+    while (!stopped) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      // SSE events are separated by a blank line; each `data:` line holds one JSON.
+      let boundary = buffer.indexOf('\n\n')
+      while (boundary !== -1) {
+        const event = buffer.slice(0, boundary)
+        buffer = buffer.slice(boundary + 2)
+        const delta = extractStreamDelta(event)
+        if (delta) {
+          output += delta
+          await onDelta(delta)
+        }
+        if (/data:\s*\[DONE\]/.test(event)) stopped = true
+        boundary = buffer.indexOf('\n\n')
+      }
+    }
+    // A server may close without a trailing blank line; flush what is left.
+    const tail = extractStreamDelta(buffer)
+    if (tail && !stopped) {
+      output += tail
+      await onDelta(tail)
+    }
+  } catch (error) {
+    if (signal?.aborted) throw new HttpError(499, 'aborted', '请求已取消。')
+    if (error instanceof HttpError) throw error
+    const message = error?.message || String(error)
+    throw new HttpError(502, 'custom_request_failed', `读取模型流失败：${message}`)
+  } finally {
+    try {
+      reader.releaseLock()
+    } catch {
+      // The reader may already be released after an error.
+    }
+  }
+  if (signal?.aborted) throw new HttpError(499, 'aborted', '请求已取消。')
+  if (!output.trim()) throw new HttpError(502, 'empty_model_output', '模型没有返回文本内容。')
+  return { text: cleanModelOutput(output), model: { provider: 'custom', model: settings.model, baseURL: settings.baseURL } }
+}
+
+/** Extract the text delta from one SSE event block, or '' when there is none. */
+function extractStreamDelta(event) {
+  let delta = ''
+  for (const line of event.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed.startsWith('data:')) continue
+    const payload = trimmed.slice(5).trim()
+    if (!payload || payload === '[DONE]') continue
+    let parsed
+    try {
+      parsed = JSON.parse(payload)
+    } catch {
+      continue
+    }
+    const choice = parsed?.choices?.[0]
+    const content = choice?.delta?.content
+    if (typeof content === 'string') delta += content
+    else if (Array.isArray(content)) {
+      delta += content
+        .map((part) => (typeof part === 'string' ? part : typeof part?.text === 'string' ? part.text : ''))
+        .join('')
+    }
+  }
+  return delta
+}
+
+/**
+ * Build the AbortSignal that follows the client connection of one request. A
  * dropped connection only aborts after a short grace period, because Node may
  * report `close` while a keep-alive socket finishes its bookkeeping.
  */
@@ -1070,6 +1399,183 @@ async function judgeCandidate(ctx, settings, instructionFn, source, candidates, 
   return index >= 0 && index < candidates.length ? index : undefined
 }
 
+/**
+ * Prepare everything a rewrite needs: settings, instruction, and — when the
+ * context-aware Beta is on — the compressed conversation brief.
+ */
+async function prepareRewrite(ctx, settings, text, sessionId, signal) {
+  const instruction = settings.systemPrompt.trim() || DEFAULT_REFINE_INSTRUCTION
+  let contextBrief = ''
+  if (settings.contextAware === true) {
+    const transcript = await collectSessionContext(ctx, sessionId)
+    contextBrief = await compressSessionContext(ctx, settings, transcript, CONTEXT_TIMEOUT_MS, sessionId, signal)
+  }
+  return { instruction, userText: buildContextualUserMessage(text, contextBrief) }
+}
+
+/**
+ * Stream the refined prompt back as newline-delimited JSON.
+ *
+ * The composer shows the text as it arrives, so the wait for a long rewrite is
+ * spent reading rather than staring at a spinner. Events:
+ *
+ *   {"type":"delta","text":"..."}   a piece of the refined prompt
+ *   {"type":"done","optimized":"...","model":{...}}  the final, cleaned text
+ *   {"type":"error","message":"..."} a failure after the stream had started
+ *
+ * With multi-candidate evaluation the drafts are generated and judged first,
+ * and only the *selected* draft is streamed — the composer must never show a
+ * candidate that was not chosen.
+ */
+async function handleOptimizeStream(ctx, req, res, ticket) {
+  const body = await readJsonBody(req)
+  const text = typeof body.text === 'string' ? body.text.trim() : ''
+  if (!text) throw new HttpError(400, 'empty_input', '请先在输入框中输入需要优化的提示词。')
+  if (text.length > MAX_INPUT_CHARS) {
+    throw new HttpError(413, 'input_too_long', `输入内容超过 ${MAX_INPUT_CHARS} 字符，请精简后再优化。`)
+  }
+  const settings = await readSettingsFile()
+  settings.apiKey = await readStoredKey(ctx, settings)
+  validateForCall(settings)
+  const sessionId = typeof body.sessionId === 'string' ? body.sessionId : undefined
+  settings.__sessionId = sessionId
+  const count = Math.min(MAX_CANDIDATES, Math.max(1, Math.floor(Number(settings.candidates) || 1)))
+  const link = connectionSignal(req, res)
+
+  // The stream headers are written before the first model call, so a failure
+  // during preparation has to be reported inside the stream rather than as an
+  // HTTP status the browser could still read.
+  let started = false
+  const begin = () => {
+    if (started) return
+    started = true
+    res.statusCode = 200
+    res.setHeader('content-type', 'application/x-ndjson; charset=utf-8')
+    res.setHeader('cache-control', 'no-store')
+    res.setHeader('x-content-type-options', 'nosniff')
+    // Chunked transfer keeps the deltas flowing instead of buffering.
+    res.setHeader('transfer-encoding', 'chunked')
+  }
+  const emit = (event) => {
+    begin()
+    res.write(`${JSON.stringify(event)}\n`)
+  }
+
+  try {
+    const { instruction, userText } = await prepareRewrite(ctx, settings, text, sessionId, link.signal)
+
+    if (count > 1) {
+      // Generate and judge first; the composer stays untouched until the winner
+      // is known, because streaming a candidate that may be discarded would show
+      // the user text they are not getting.
+      const drafts = await Promise.allSettled(
+        Array.from({ length: count }, () =>
+          settings.mode === 'custom'
+            ? callCustomEndpoint(settings, instruction, userText, DEFAULT_TIMEOUT_MS, link.signal)
+            : callAccountModel(ctx, settings, instruction, userText, DEFAULT_TIMEOUT_MS, sessionId, link.signal),
+        ),
+      )
+      const candidates = drafts
+        .filter((entry) => entry.status === 'fulfilled' && entry.value.text.trim())
+        .map((entry) => entry.value)
+      if (candidates.length === 0) {
+        const firstError = drafts.find((entry) => entry.status === 'rejected')?.reason
+        throw firstError instanceof HttpError ? firstError : new HttpError(502, 'empty_model_output', '模型没有返回可用结果。')
+      }
+      const texts = candidates.map((candidate) => candidate.text)
+      let chosen
+      try {
+        chosen = await judgeCandidate(ctx, settings, instruction, text, texts, link.signal)
+      } catch {
+        chosen = undefined
+      }
+      if (chosen === undefined) {
+        const scored = texts.map((value, index) => ({ index, score: scoreCandidate(value, text) }))
+        scored.sort((a, b) => b.score - a.score)
+        chosen = scored[0].index
+      }
+      const selected = texts[chosen]
+      // Replay the winning draft in a few pieces so the composer still fills in
+      // progressively; the text is already known, so this costs nothing.
+      begin()
+      const pieces = chunkText(selected, 24)
+      for (const piece of pieces) {
+        if (link.signal.aborted) break
+        emit({ type: 'delta', text: piece })
+        await sleep(16)
+      }
+      ticket.settle()
+      emit({
+        type: 'done',
+        optimized: selected,
+        model: candidates[chosen].model,
+        candidates: texts.length,
+        chosen: chosen + 1,
+      })
+      res.end()
+      return
+    }
+
+    let accumulated = ''
+    const onDelta = async (delta) => {
+      accumulated += delta
+      emit({ type: 'delta', text: delta })
+    }
+    const result =
+      settings.mode === 'custom'
+        ? await streamCustomEndpoint(settings, instruction, userText, DEFAULT_TIMEOUT_MS, link.signal, onDelta)
+        : await streamAccountModel(ctx, settings, instruction, userText, DEFAULT_TIMEOUT_MS, sessionId, link.signal, onDelta)
+    ticket.settle()
+    emit({ type: 'done', optimized: result.text, model: result.model, candidates: 1, chosen: 1 })
+    res.end()
+  } catch (error) {
+    if (error?.name === 'AbortError' || link.signal.aborted) {
+      // The client went away; nothing to report.
+      if (!res.writableEnded) res.end()
+      return
+    }
+    const message = error instanceof Error ? error.message : String(error)
+    if (started) {
+      emit({ type: 'error', message })
+      res.end()
+      return
+    }
+    throw error
+  } finally {
+    link.dispose()
+  }
+}
+
+/** Split text into pieces of at most `size` characters, preferring line ends. */
+function chunkText(text, size) {
+  const value = String(text || '')
+  if (!value) return []
+  const pieces = []
+  let rest = value
+  while (rest.length > size) {
+    const window = rest.slice(0, size)
+    const breakAt = Math.max(window.lastIndexOf('\n'), window.lastIndexOf(' '))
+    const cut = breakAt > size * 0.5 ? breakAt + 1 : size
+    pieces.push(rest.slice(0, cut))
+    rest = rest.slice(cut)
+  }
+  if (rest) pieces.push(rest)
+  return pieces
+}
+
+/**
+ * Resolve after the given delay.
+ *
+ * The timer is deliberately NOT unref'd: the process is in the middle of a
+ * response, and an unref'd timer would let Node exit while the promise is
+ * still pending.
+ */
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
 async function handleOptimize(ctx, req, res, ticket) {
   const body = await readJsonBody(req)
   const text = typeof body.text === 'string' ? body.text.trim() : ''
@@ -1080,13 +1586,12 @@ async function handleOptimize(ctx, req, res, ticket) {
   const settings = await readSettingsFile()
   settings.apiKey = await readStoredKey(ctx, settings)
   validateForCall(settings)
-  const instruction = settings.systemPrompt.trim() || DEFAULT_REFINE_INSTRUCTION
   const sessionId = typeof body.sessionId === 'string' ? body.sessionId : undefined
   settings.__sessionId = sessionId
-  const userText = buildUserMessage(text)
   const count = Math.min(MAX_CANDIDATES, Math.max(1, Math.floor(Number(settings.candidates) || 1)))
   const link = connectionSignal(req, res)
   try {
+    const { instruction, userText } = await prepareRewrite(ctx, settings, text, sessionId, link.signal)
     // Evaluation mode: generate N drafts, then let the judge pick one. The judge
     // call is one extra request, so the token cost grows roughly with N + 1.
     if (count > 1) {
@@ -1265,7 +1770,7 @@ function createHandler(ctx, options) {
         if (method !== 'GET' && method !== 'POST') throw new HttpError(405, 'method_not_allowed', '仅支持 GET 或 POST。')
         return await handleUpdateCheck(ctx, req, res)
       }
-      if (path === `${ROUTE_BASE}/optimize` || path === `${ROUTE_BASE}/test`) {
+      if (path === `${ROUTE_BASE}/optimize` || path === `${ROUTE_BASE}/optimize/stream` || path === `${ROUTE_BASE}/test`) {
         if (method !== 'POST') throw new HttpError(405, 'method_not_allowed', '仅支持 POST。')
         const verdict = takeCall(sourceKey(req))
         if (!verdict.allowed) {
@@ -1274,6 +1779,7 @@ function createHandler(ctx, options) {
           })
         }
         inFlight.add(ticket)
+        if (path === `${ROUTE_BASE}/optimize/stream`) return await handleOptimizeStream(ctx, req, res, ticket)
         if (path === `${ROUTE_BASE}/optimize`) return await handleOptimize(ctx, req, res, ticket)
         return await handleTest(ctx, req, res, ticket)
       }

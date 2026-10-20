@@ -32,7 +32,7 @@ const eraseMs = constOf('HINT_ERASE_MS')
 check('hint timing constants defined', [chunk, typeMs, holdMs, eraseChunk, eraseMs].every(Number.isFinite), {
   chunk, typeMs, holdMs, eraseChunk, eraseMs,
 })
-check('hold is 5 seconds', holdMs === 5000, holdMs)
+check('hold is 2 seconds', holdMs === 2000, holdMs)
 check('typing uses chunks, not single chars', chunk > 1, chunk)
 check('erasing is slower than typing', eraseMs >= typeMs, { typeMs, eraseMs })
 check('erasing removes fewer chars per tick', eraseChunk <= chunk, { eraseChunk, chunk })
