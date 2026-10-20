@@ -191,13 +191,33 @@ jobs:
           fi
           echo "No _authToken present: npm will authenticate through OIDC."
 
+      # Trusted Publishing makes npm staging the default: the CLI exits 0 after
+      # handing the tarball to the registry's staged queue, WITHOUT publishing it.
+      # A green run therefore does not mean the version is installable, and the
+      # staged copy then blocks every retry with 409 "previously staged version".
+      # The version is verified against the public registry afterwards, and the
+      # run fails when it did not land.
       - name: Publish to npm
         if: ${{ github.event_name == 'push' || inputs.publish_npm }}
         run: |
           set -euo pipefail
-          if npm publish --registry=https://registry.npmjs.org --provenance --access public; then
-            echo "Published to the npm registry"
-          else
+          VERSION="${{ steps.version.outputs.version }}"
+          if ! npm publish --registry=https://registry.npmjs.org --provenance --access public; then
             echo "::error::npm publish failed. The GitHub Release and its tarball are intact; fix the cause and re-run this workflow."
             exit 1
           fi
+          echo "npm publish exited 0; confirming $VERSION is publicly installable"
+
+          # The registry can lag a few seconds; poll before declaring failure.
+          for attempt in 1 2 3 4 5 6; do
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/dsh-prompt-optimization/$VERSION")"
+            if [ "$CODE" = "200" ]; then
+              echo "Version $VERSION is live on the npm registry"
+              exit 0
+            fi
+            echo "attempt $attempt: registry returned $CODE; retrying in 5s"
+            sleep 5
+          done
+
+          echo "::error::npm publish reported success but $VERSION is not on the registry. This usually means the release was staged instead of published: approve it at https://www.npmjs.com/settings/kukano996npm/staged-packages"
+          exit 1
