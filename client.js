@@ -32,11 +32,19 @@ window.__ModuleLoader__.load({
       'tool.draftChanged': '草稿在优化期间发生了变化，本次结果未应用。',
       'tool.undoHint': '恢复优化前的提示词',
       'tool.optimizeHint': '把当前输入改写为更专业、更清晰的提示词',
+      'tool.references': '草稿中包含文件或会话引用，优化会丢失这些引用，请先移除后再优化。',
+      'tool.referencesHint': '草稿含引用，暂不支持优化',
       'settings.nav': '提示词优化',
       'settings.title': '提示词优化',
       'settings.description': '把输入框里的自然语言需求改写为任务明确、主旨清晰、无歧义、条理清晰、计划合理、目标准确的专业提示词。',
       'settings.showLabel': '显示「优化提示词」文字',
       'settings.showLabelHint': '关闭后按钮在输入框工具栏里只显示图标；撤回时仍显示「撤回」文字。',
+      'settings.evaluate': '多候选评估（更慢、更贵）',
+      'settings.evaluateHint': '开启后先生成多份优化结果，再由评审模型选出最好的一份，质量更稳定。',
+      'settings.evaluateCost': '注意：每次优化要调用模型 {count} 次生成 + 1 次评审，token 消耗约为单次的 {count2} 倍。',
+      'settings.candidates': '候选份数',
+      'settings.candidatesHint': '2–5 份。份数越多，耗时与 token 消耗越高。',
+      'settings.candidatesOption': '{count} 份',
       'settings.mode': '模型来源',
       'settings.modeAccount': '跟随主程序',
       'settings.modeAccountHint': '默认使用登录账户的 DeepSeek 模型；如果会话已选择模型，则优先使用该模型。',
@@ -90,11 +98,19 @@ window.__ModuleLoader__.load({
       'tool.draftChanged': 'The draft changed while optimizing, so the result was not applied.',
       'tool.undoHint': 'Restore the prompt from before optimization',
       'tool.optimizeHint': 'Rewrite the current input as a clearer, more professional prompt',
+      'tool.references': 'This draft contains file or session references that a rewrite would drop. Remove them first, then optimize.',
+      'tool.referencesHint': 'Draft contains references; optimization is unavailable',
       'settings.nav': 'Prompt Refine',
       'settings.title': 'Prompt Refine',
       'settings.description': 'Rewrite a rough request in the composer into a professional prompt with a clear task, purpose, plan, and acceptance criteria.',
       'settings.showLabel': 'Show the "Optimize prompt" label',
       'settings.showLabelHint': 'When off, the toolbar control shows only an icon; the Undo action keeps its label.',
+      'settings.evaluate': 'Multi-candidate evaluation (slower, costlier)',
+      'settings.evaluateHint': 'When on, several drafts are generated and a judge model picks the best one, which makes quality more consistent.',
+      'settings.evaluateCost': 'Note: each run costs {count} generation calls plus one judge call — roughly {count2}× the tokens of a single pass.',
+      'settings.candidates': 'Candidates',
+      'settings.candidatesHint': '2–5 drafts. More drafts mean more latency and token cost.',
+      'settings.candidatesOption': '{count} drafts',
       'settings.mode': 'Model source',
       'settings.modeAccount': 'Follow the app',
       'settings.modeAccountHint': 'Use the signed-in account DeepSeek model by default; the session-selected model wins when one is set.',
@@ -147,13 +163,57 @@ window.__ModuleLoader__.load({
       return origin + ROUTE + path
     }
 
+    /** Host-issued request ticket; /status is the only route that serves it. */
+    let ticketPromise = null
+
+    function fetchTicket(force) {
+      if (!force && ticketPromise) return ticketPromise
+      ticketPromise = fetch(apiUrl('/status'), {
+        credentials: 'same-origin',
+        headers: { 'x-dsh-promt-refine': '1' },
+      })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload) => (payload && typeof payload.ticket === 'string' ? payload.ticket : null))
+        .catch(() => null)
+      return ticketPromise
+    }
+
+    class RequestError extends Error {
+      constructor(message, status, code) {
+        super(message)
+        this.status = status
+        this.code = code
+      }
+    }
+
+    function isAbortError(error) {
+      return Boolean(error && (error.name === 'AbortError' || error.code === 'aborted' || error.status === 499))
+    }
+
+    /**
+     * One plugin request. Retries once after refreshing the ticket when the Host
+     * rejected a stale one (page kept open across a Host restart).
+     */
     async function request(path, options) {
       const init = options || {}
-      const response = await fetch(apiUrl(path), {
-        credentials: 'same-origin',
-        ...init,
-        headers: { 'content-type': 'application/json', 'x-dsh-promt-refine': '1', ...(init.headers || {}) },
-      })
+      const send = (ticket) =>
+        fetch(apiUrl(path), {
+          credentials: 'same-origin',
+          ...init,
+          headers: {
+            'content-type': 'application/json',
+            'x-dsh-promt-refine': '1',
+            ...(ticket ? { 'x-dsh-promt-refine-ticket': ticket } : {}),
+            ...(init.headers || {}),
+          },
+        })
+
+      let ticket = path === '/status' ? undefined : await fetchTicket(false)
+      let response = await send(ticket)
+      if (response.status === 403 && path !== '/status') {
+        ticket = await fetchTicket(true)
+        if (ticket) response = await send(ticket)
+      }
       let payload = null
       try {
         payload = await response.json()
@@ -161,14 +221,15 @@ window.__ModuleLoader__.load({
         payload = null
       }
       if (!response.ok) {
+        const code = payload && payload.error && payload.error.code ? payload.error.code : undefined
         const message = payload && payload.error && payload.error.message ? payload.error.message : `HTTP ${response.status}`
-        throw new Error(message)
+        throw new RequestError(message, response.status, code)
       }
       return payload
     }
 
-    function postJson(path, body) {
-      return request(path, { method: 'POST', body: JSON.stringify(body || {}) })
+    function postJson(path, body, signal) {
+      return request(path, { method: 'POST', body: JSON.stringify(body || {}), signal })
     }
 
     function errorMessage(error) {
@@ -294,6 +355,9 @@ window.__ModuleLoader__.load({
       const t = typeof props.t === 'function' ? props.t : (key) => key
       const draft = useInput((state) => state.draft)
       const phase = useInput((state) => state.phase)
+      // Reference chips (@file / session) cannot survive a plain-text rewrite;
+      // optimizing such a draft would silently drop them.
+      const hasReferences = useInput((state) => Array.isArray(state.occurrences) && state.occurrences.length > 0)
       const preferences = useSharedSettings()
       const [busy, setBusy] = React.useState(false)
       const [original, setOriginal] = React.useState(null)
@@ -302,16 +366,25 @@ window.__ModuleLoader__.load({
       const draftRef = React.useRef(draft)
       draftRef.current = draft
       const mounted = React.useRef(true)
+      const inflight = React.useRef(null)
+
+      const abortInflight = () => {
+        const controller = inflight.current
+        inflight.current = null
+        if (controller) controller.abort()
+      }
 
       React.useEffect(() => {
         mounted.current = true
         loadSharedSettings()
         return () => {
           mounted.current = false
+          abortInflight()
         }
       }, [])
 
       React.useEffect(() => {
+        abortInflight()
         setBusy(false)
         setOriginal(null)
         setRefined(null)
@@ -337,15 +410,22 @@ window.__ModuleLoader__.load({
 
       const optimize = async () => {
         if (busy) return
+        if (hasReferences) {
+          setMessage({ level: 'error', text: t('tool.references') })
+          return
+        }
         const source = draft
         if (!source.trim()) {
           setMessage({ level: 'error', text: t('tool.empty') })
           return
         }
+        abortInflight()
+        const controller = new AbortController()
+        inflight.current = controller
         setBusy(true)
         setMessage(null)
         try {
-          const result = await postJson('/optimize', { text: source, sessionId })
+          const result = await postJson('/optimize', { text: source, sessionId }, controller.signal)
           const optimized = typeof result.optimized === 'string' ? result.optimized.trim() : ''
           if (!optimized) throw new Error(t('tool.empty'))
           if (!mounted.current) return
@@ -357,14 +437,17 @@ window.__ModuleLoader__.load({
           setRefined(optimized)
           inputActions.setDraft(optimized)
         } catch (error) {
-          if (!mounted.current) return
+          // A cancelled or superseded request is not a failure worth a message.
+          if (isAbortError(error) || !mounted.current) return
           setMessage({ level: 'error', text: t('tool.failed', { message: errorMessage(error) }) })
         } finally {
+          if (inflight.current === controller) inflight.current = null
           if (mounted.current) setBusy(false)
         }
       }
 
       const undo = () => {
+        abortInflight()
         if (original === null) return
         inputActions.setDraft(original)
         setOriginal(null)
@@ -374,10 +457,12 @@ window.__ModuleLoader__.load({
 
       const locked = phase !== 'plain'
       const isRefined = refined !== null && original !== null
-      const disabled = busy || locked
+      // Undo stays available even while the composer is busy, so a mistaken
+      // optimization can always be reverted.
+      const disabled = isRefined ? false : busy || locked || hasReferences
       const showIdleLabel = preferences.showLabel !== false
       const showText = isRefined ? true : showIdleLabel
-      const title = isRefined ? t('tool.undoHint') : t('tool.optimizeHint')
+      const title = isRefined ? t('tool.undoHint') : hasReferences ? t('tool.referencesHint') : t('tool.optimizeHint')
       const label = busy ? t('tool.busy') : isRefined ? t('tool.undo') : t('tool.optimize')
 
       return h(
@@ -392,6 +477,7 @@ window.__ModuleLoader__.load({
             className: 'dsh-pr-tool',
             'data-icon-only': showText ? 'false' : 'true',
             'data-refined': isRefined ? 'true' : 'false',
+            'data-refs': hasReferences && !isRefined ? 'true' : 'false',
             disabled,
             title,
             'aria-label': label,
@@ -421,6 +507,7 @@ window.__ModuleLoader__.load({
 .dsh-pr-field { display: flex; flex-direction: column; gap: 6px; }
 .dsh-pr-label { font-size: 13px; line-height: 20px; font-weight: 500; color: var(--dsw-alias-label-primary); }
 .dsh-pr-hint { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); }
+.dsh-pr-cost { margin-top: 6px; color: var(--dsw-alias-state-warn-primary); }
 .dsh-pr-input, .dsh-pr-textarea { box-sizing: border-box; width: 100%; padding: 6px 12px; border: 0.5px solid var(--dsw-alias-border-l4);
   border-radius: var(--dsw-radius-md, 12px); background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary);
   font: inherit; font-size: 13px; line-height: 20px; }
@@ -474,9 +561,12 @@ window.__ModuleLoader__.load({
       maxTokens: '0',
       systemPrompt: '',
       showLabel: true,
+      evaluate: false,
+      candidates: '3',
     }
 
     function toForm(settings) {
+      const candidates = Math.min(5, Math.max(1, Math.floor(Number(settings.candidates) || 1)))
       return {
         mode: settings.mode === 'custom' ? 'custom' : 'account',
         provider: settings.provider || '',
@@ -487,6 +577,8 @@ window.__ModuleLoader__.load({
         maxTokens: String(settings.maxTokens ?? 0),
         systemPrompt: settings.systemPrompt || '',
         showLabel: settings.showLabel !== false,
+        evaluate: candidates > 1,
+        candidates: String(candidates > 1 ? candidates : 3),
       }
     }
 
@@ -545,6 +637,8 @@ window.__ModuleLoader__.load({
         maxTokens: form.maxTokens,
         systemPrompt: form.systemPrompt,
         showLabel: form.showLabel,
+        // One candidate = plain single-pass refinement; the toggle only adds work.
+        candidates: form.evaluate ? form.candidates : '1',
       })
 
       const save = async () => {
@@ -644,6 +738,56 @@ window.__ModuleLoader__.load({
             'data-on': form.showLabel ? 'true' : 'false',
             onClick: () => update('showLabel', !form.showLabel),
           }, h('span', { className: 'dsh-pr-switch-thumb' })),
+        ),
+
+        h(
+          'div',
+          { className: 'dsh-pr-row' },
+          h(
+            'div',
+            { style: { flex: '1 1 260px', minWidth: 0 } },
+            h('div', { className: 'dsh-pr-row-title' }, t('settings.evaluate')),
+            h('div', { className: 'dsh-pr-row-desc' }, t('settings.evaluateHint')),
+            form.evaluate
+              ? h('div', { className: 'dsh-pr-hint dsh-pr-cost', role: 'note' }, t('settings.evaluateCost', { count: form.candidates, count2: String(Number(form.candidates) + 1) }))
+              : null,
+          ),
+          h(
+            'div',
+            { className: 'dsh-pr-form', style: { flex: '0 1 620px' } },
+            h(
+              'div',
+              { className: 'dsh-pr-inline', style: { alignItems: 'center' } },
+              h('button', {
+                type: 'button',
+                role: 'switch',
+                'aria-checked': form.evaluate ? 'true' : 'false',
+                'aria-label': t('settings.evaluate'),
+                className: 'dsh-pr-switch',
+                'data-on': form.evaluate ? 'true' : 'false',
+                onClick: () => update('evaluate', !form.evaluate),
+              }, h('span', { className: 'dsh-pr-switch-thumb' })),
+              form.evaluate
+                ? h(Field, {
+                    id: 'dsh-pr-candidates',
+                    label: t('settings.candidates'),
+                    hint: t('settings.candidatesHint'),
+                    children: h(
+                      'select',
+                      {
+                        id: 'dsh-pr-candidates',
+                        className: 'dsh-pr-input',
+                        value: form.candidates,
+                        onChange: (event) => update('candidates', event.target.value),
+                      },
+                      [2, 3, 4, 5].map((value) =>
+                        h('option', { key: value, value: String(value) }, t('settings.candidatesOption', { count: String(value) })),
+                      ),
+                    ),
+                  })
+                : null,
+            ),
+          ),
         ),
 
         h(
