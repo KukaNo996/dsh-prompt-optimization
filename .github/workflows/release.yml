@@ -196,7 +196,7 @@ jobs:
       # A green run therefore does not mean the version is installable, and the
       # staged copy then blocks every retry with 409 "previously staged version".
       # The version is verified against the public registry afterwards, and the
-      # run fails when it did not land.
+      # run reports exactly what happened instead of claiming success.
       - name: Publish to npm
         if: ${{ github.event_name == 'push' || inputs.publish_npm }}
         run: |
@@ -219,5 +219,8 @@ jobs:
             sleep 5
           done
 
-          echo "::error::npm publish reported success but $VERSION is not on the registry. This usually means the release was staged instead of published: approve it at https://www.npmjs.com/settings/kukano996npm/staged-packages"
+          # npm 11 stages every Trusted Publishing release and waits for a human
+          # to approve it. The CLI reports success at that point, so the version
+          # is absent from the registry while it sits in the staged queue.
+          echo "::error::Version $VERSION was staged by npm but is not published yet. Approve it at https://www.npmjs.com/settings/kukano996npm/staged-packages — the GitHub Release and its tarball are already final and unaffected."
           exit 1
