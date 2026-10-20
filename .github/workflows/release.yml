@@ -48,11 +48,21 @@ jobs:
         with:
           python-version: '3.x'
 
+      # NOTE: `registry-url` is deliberately NOT set here.
+      #
+      # setup-node writes an .npmrc containing
+      #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+      # and injects the placeholder NODE_AUTH_TOKEN=XXXXX-XXXXX-XXXXX-XXXXX when no
+      # token secret is configured. npm then treats that placeholder as real
+      # credentials and never falls back to OIDC, so the publish request is sent
+      # unauthenticated and the registry answers 404 "not in this registry" instead
+      # of a 401/403 (it will not confirm the package exists to an anonymous caller).
+      # Leaving registry-url out keeps .npmrc free of an _authToken entry, which is
+      # what lets npm use the OIDC identity granted by `id-token: write`.
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
 
       - name: Resolve version
         id: version
@@ -141,6 +151,26 @@ jobs:
       # npm matches the workflow by file name, so entering
       # ".github/workflows/release.yml" silently fails to bind and every publish
       # ends as a 404 "not in this registry".
+      # Guard against the failure mode above recurring: an _authToken entry makes
+      # npm ignore the OIDC identity and fail with an opaque 404. Fail loudly here
+      # instead, with the file contents, rather than in the registry response.
+      - name: Assert npm will use OIDC (no token in .npmrc)
+        run: |
+          set -euo pipefail
+          NPMRC="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          echo "npmrc: $NPMRC"
+          if [ -f "$NPMRC" ]; then
+            # Print key names only; never echo a credential value.
+            sed -E 's/(_authToken=).*/\1<redacted>/' "$NPMRC" || true
+          else
+            echo "(no .npmrc present)"
+          fi
+          if [ -f "$NPMRC" ] && grep -q '_authToken' "$NPMRC"; then
+            echo "::error::.npmrc contains _authToken, which disables npm Trusted Publishing. Remove registry-url/token from setup-node."
+            exit 1
+          fi
+          echo "No _authToken present: npm will authenticate through OIDC."
+
       - name: Publish to npm
         if: ${{ github.event_name == 'push' || inputs.publish_npm }}
         run: |
