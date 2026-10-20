@@ -72,17 +72,11 @@ jobs:
         with:
           node-version: 22
 
+      # Reuse the one authoritative pack assertion instead of duplicating the
+      # required-file list here: a second copy drifted when locale/zh.json was
+      # split into zh-cn / zh-tw and broke this job while verify stayed green.
       - name: Pack and inspect tarball
         run: |
           npm pack --json > pack.json
-          node -e "
-            const p = require('./pack.json')[0];
-            console.log('package size:', p.size, 'unpacked:', p.unpackedSize);
-            const names = p.files.map(f => f.path);
-            const required = ['index.js','client.js','cordis.patch.yml','locale/en.json','locale/zh.json','icon.svg','package.json'];
-            const missing = required.filter(r => !names.includes(r));
-            if (missing.length) { console.error('missing:', missing); process.exit(1); }
-            const forbidden = names.filter(n => n.startsWith('.verify/') || n.startsWith('.github/'));
-            if (forbidden.length) { console.error('forbidden:', forbidden); process.exit(1); }
-            console.log('tarball contents OK');
-          "
+          node -e "const p = require('./pack.json')[0]; console.log('package size:', p.size, 'unpacked:', p.unpackedSize);"
+          node .github/scripts/check-pack.mjs pack.json
