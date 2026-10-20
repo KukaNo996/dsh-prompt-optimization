@@ -180,7 +180,7 @@ await call('POST', '/dsh-prompt-optimization/settings', { settings: { mode: 'acc
 // 发起一个长时间优化，然后在响应过程中销毁响应（模拟客户端 abort）
 {
   const { res } = makeRes()
-  const req = makeReq('POST', '/dsh-prompt-optimization/optimize/stream', { text: '写个函数', sessionId: 's' })
+  const req = makeReq('POST', '/dsh-prompt-optimization/optimize', { text: '写个函数', sessionId: 's' })
   const pending = handler(req, res)
   // 等模型调用开始
   await new Promise((r) => setTimeout(r, 200))

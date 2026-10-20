@@ -802,16 +802,6 @@ window.__ModuleLoader__.load({
     const HINT_HOLD_MS = 2000
     const HINT_ERASE_CHUNK = 1
     const HINT_ERASE_MS = 46
-    /**
-     * How often the streamed rewrite is written into the composer.
-     *
-     * A rewrite arrives as well over a hundred small pieces. Writing each one
-     * into the draft makes the host re-render and persist the draft on every
-     * piece, which starves the main thread and freezes the window. Coalescing
-     * the pieces into one write every ~80 ms keeps the text visibly growing
-     * while leaving the UI responsive.
-     */
-    const STREAM_FLUSH_MS = 80
     const toolbarCss = `
 .dsh-pr-wrap { position: relative; display: inline-flex; align-items: center; align-self: center; flex: none; }
 /* Height matches the host's compact toolbar controls; the icon and the label are
@@ -888,25 +878,6 @@ window.__ModuleLoader__.load({
        * timer that was already queued when the cancellation happened.
        */
       const hintRun = React.useRef({ timer: null, phase: 'idle', chars: [], index: 0 })
-      /**
-       * Owner of the pending stream write.
-       *
-       * The stream coalesces its pieces into one draft write every
-       * STREAM_FLUSH_MS; the timer lives in a ref so the cancel button can drop
-       * it from outside the optimize call, and so no re-render is needed to
-       * schedule it.
-       */
-      const streamFlush = React.useRef({ timer: null, pending: '' })
-
-      /** Drop a pending draft write; the caller's own cleanup follows. */
-      const cancelPendingFlush = () => {
-        const state = streamFlush.current
-        if (state.timer !== null) {
-          clearTimeout(state.timer)
-          state.timer = null
-        }
-        state.pending = ''
-      }
 
       const abortInflight = () => {
         const controller = inflight.current
@@ -1000,8 +971,7 @@ window.__ModuleLoader__.load({
         return () => {
           mounted.current = false
           abortInflight()
-          cancelPendingFlush()
-          const run = hintRun.current
+            const run = hintRun.current
           if (run.timer !== null) clearTimeout(run.timer)
           run.timer = null
           run.phase = 'idle'
@@ -1011,7 +981,6 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         abortInflight()
         cancelHintAnimation()
-        cancelPendingFlush()
         setBusy(false)
         setOriginal(null)
         setRefined(null)
@@ -1028,6 +997,7 @@ window.__ModuleLoader__.load({
           setMessage(null)
         }
       }, [draft, refined])
+
 
       // Typing while the hint is playing cancels it at once. The animation is
       // guidance; the moment the user starts writing for real it must stop rather
@@ -1064,101 +1034,27 @@ window.__ModuleLoader__.load({
         inflight.current = controller
         setBusy(true)
         setMessage(null)
-        // The streamed text is written into the composer as it arrives. The
-        // original draft is remembered first so the control can offer "undo"
-        // even while the stream is still running.
-        setOriginal(source)
-        // Writing every single delta into the draft is what freezes the app:
-        // a rewrite arrives as well over a hundred small pieces, and each
-        // setDraft makes the host re-render, persist and write the draft back
-        // to the session. The main thread never gets a free moment, so the
-        // whole window stops responding. The text is therefore coalesced and
-        // flushed at most a few times per second — fast enough to look
-        // continuous, slow enough to leave the UI responsive.
-        let pendingText = ''
-        let flushTimer = null
-        // Set when the user edits the draft themselves; a pending flush must
-        // then leave their text alone.
-        let takenOver = false
-        const flush = () => {
-          flushTimer = null
-          streamFlush.current.timer = null
-          if (!mounted.current || takenOver || !pendingText) return
-          inputActions.setDraft(pendingText)
-          pendingText = ''
-          streamFlush.current.pending = ''
-        }
-        const scheduleFlush = () => {
-          if (flushTimer !== null) return
-          flushTimer = setTimeout(flush, STREAM_FLUSH_MS)
-          streamFlush.current.timer = flushTimer
-          streamFlush.current.pending = pendingText
-        }
-        const cancelFlush = () => {
-          if (flushTimer !== null) {
-            clearTimeout(flushTimer)
-            flushTimer = null
-          }
-          pendingText = ''
-          streamFlush.current.timer = null
-          streamFlush.current.pending = ''
-        }
         try {
-          // The stream writes the refined prompt straight into the draft. The
-          // user can watch it being written, which turns a long wait into
-          // something readable.
-          let streamed = ''
-          // Once the user edits the draft themselves, the stream stops writing:
-          // their text must not be overwritten by the next delta.
-          let userTookOver = false
-          const result = await streamRequest(
-            '/optimize/stream',
-            { text: source, sessionId },
-            async (piece) => {
-              if (!mounted.current) return
-              if (userTookOver) return
-              // The draft holds either the original text or what the stream has
-              // written so far. Anything else means the user typed.
-              if (draftRef.current !== source && draftRef.current !== streamed) {
-                userTookOver = true
-                takenOver = true
-                cancelFlush()
-                return
-              }
-              streamed += piece
-              pendingText = streamed
-              // The Host sends the raw model output while it streams; the final
-              // `done` event carries the cleaned version.
-              scheduleFlush()
-            },
-            controller.signal,
-          )
-          // The final text is authoritative: flush whatever is pending and then
-          // write the cleaned result exactly once.
-          cancelFlush()
+          // The rewrite is requested in one call and written back once it is
+          // complete. Streaming it into the composer was tried and reverted:
+          // the deltas kept the button spinning while the draft stayed empty,
+          // which read as "nothing is happening" for the whole generation.
+          const result = await postJson('/optimize', { text: source, sessionId }, controller.signal)
           const optimized = typeof result.optimized === 'string' ? result.optimized.trim() : ''
           if (!optimized) throw new Error(t('tool.empty'))
           if (!mounted.current) return
-          if (userTookOver) {
-            // The user typed while the model was writing; their text wins and the
-            // result is not applied.
+          if (draftRef.current !== source) {
             setMessage({ level: 'info', text: t('tool.draftChanged') })
-            setOriginal(null)
             return
           }
+          setOriginal(source)
           setRefined(optimized)
           inputActions.setDraft(optimized)
         } catch (error) {
-          cancelFlush()
           // A cancelled or superseded request is not a failure worth a message.
           if (isAbortError(error) || !mounted.current) return
-          // The partial stream may have replaced the draft; restore the original
-          // so a failed optimization never leaves half a prompt behind.
-          if (draftRef.current !== source) inputActions.setDraft(source)
-          setOriginal(null)
           setMessage({ level: 'error', text: t('tool.failed', { message: errorMessage(error) }) })
         } finally {
-          cancelFlush()
           if (inflight.current === controller) inflight.current = null
           if (mounted.current) setBusy(false)
         }
@@ -1187,7 +1083,6 @@ window.__ModuleLoader__.load({
         abortInflight()
         // A pending flush would otherwise write the partial rewrite back over
         // the original text after the cancel.
-        cancelPendingFlush()
         // The stream may have replaced the draft with a partial rewrite.
         if (original !== null && draftRef.current !== original) {
           inputActions.setDraft(original)

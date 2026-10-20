@@ -32,7 +32,9 @@ Natural-language requests are usually vague: no context, no scope, no acceptance
 | **Local models** | Requests are made by the host side, so browser CORS never blocks Ollama / LM Studio / vLLM |
 | **Show hint text** | Off by default (icon only); when on, both "Optimize prompt" and "Undo" labels are shown |
 | **Empty-draft guidance** | Clicking optimize on an empty draft types a hint into the composer, holds it for 2 seconds, then erases it character by character; typing cancels it immediately |
-| **Streaming output** | The rewritten prompt is written into the composer as the model produces it; with multi-candidate evaluation only the selected draft is streamed |
+| **Classified rewriting** | The original is classified into one of six types first — knowledge, coding, writing, analysis, process, conversion — and the type decides what to ask |
+| **Question decomposition** | A question like "what is X" is never answered; it is decomposed into at least 3 analysis dimensions |
+| **Five length tiers** | Tier is picked from the original length and type: tiny / short / standard / detailed / full, never mixed within one rewrite |
 | **Cancellable optimization** | Click the spinner while the optimization runs to cancel it; the draft is restored |
 | **Maximum wait** | Longest wait for one optimization, 15 seconds by default and 10 seconds at minimum; it aborts on its own |
 | **Optimize with context (Beta)** | Optionally compress the current conversation first and rewrite against it, so the result fits your usual phrasing; off by default |
@@ -114,15 +116,42 @@ The **maximum wait** limits how long one optimization may take, **15 seconds by 
 It covers the whole operation — context compression, candidate generation and judging — not just the last model call.
 When it runs out the plugin stops and says so.
 
-### Streaming output
+### Classification
 
-Once the model starts producing, the rewritten prompt is written into the composer **as it arrives** instead of after the whole response.
+The original is classified before anything is written, and the type decides what the prompt should ask:
 
-- **Single candidate**: text shows up while the model is still writing it.
-- **Multi-candidate**: the drafts are generated and judged first, and only the **selected** draft is streamed. A candidate that was not chosen never reaches the composer.
-- If you edit the draft while it streams, the writes stop at once and your text is never overwritten.
-- A failed request restores the original draft instead of leaving half a prompt behind.
+| Type | Typical phrasings | What the rewrite spells out |
+| --- | --- | --- |
+| Knowledge | what is, why, difference, principle | Several analysis dimensions, answered systematically |
+| Coding | write, fix, refactor, error, performance | Inputs/outputs, language and framework, constraints, edge cases, acceptance |
+| Writing | copy, naming, email, script, translation | Audience, purpose, tone, length, taboos |
+| Analysis | compare, choose, evaluate, worth it | Candidates, evaluation dimensions, conclusion form, criteria |
+| Process | how to, getting started, steps | Phases, per-phase output, dependencies, checkpoints |
+| Conversion | summarise, shorten, rewrite, format | Target shape, what to keep, what to drop |
 
+### Questions are never answered
+
+When you ask "what is a closure" or "React or Vue", the plugin **never answers in an assistant voice**.
+It rewrites your question into a prompt that another AI can answer:
+
+- The question must be split into **at least 3 analysis dimensions**; a polished one-line question does not count;
+- Six dimensions are available: definition, mechanism, taxonomy, applications, limits, practice;
+- The reader level, depth and whether sources are needed are stated explicitly;
+- Knowledge questions are written at the "detailed" tier even when the original is five characters long.
+
+### Five length tiers
+
+Length is decided by **the original length plus the question type**, so a short request is never expanded into a wall of text:
+
+| Tier | Original | Output |
+| --- | --- | --- |
+| Tiny | under ~20 characters | 1–2 sentences; no headings, numbering or background |
+| Short | 20–50 characters, one ask | 2–4 sentences or up to 3 short requirements |
+| Standard | 50–150 characters, or 2–3 asks | 4–8 lines, at most 1–2 small headings |
+| Detailed | 150–400 characters, or a type that needs a systematic answer | Structured sections: goal / dimensions / constraints / output shape / acceptance |
+| Full | over 400 characters, or several dependent asks | The full structure with background, steps and checkpoints |
+
+Tiers are never mixed within one rewrite. Shorter is better by one tier than the original justifies.
 ### Optimizing with context (Beta)
 
 The **Optimize with context (Beta)** switch is **off by default**. When on, the plugin:
@@ -235,12 +264,10 @@ node .verify/hint-animation-test.mjs  # Empty-draft guidance: type / hold / eras
 node .verify/icon-test.mjs            # Icon structure contract (16 checks)
 node .verify/locale-test.mjs          # Locale resolution and key parity (36 checks)
 node .verify/translate-sim.mjs        # Actual output per language (14 checks)
+node .verify/preamble-test.mjs        # Preambles stripped, real prompts kept (12 checks)
 node .verify/rename-migration-test.mjs # Rename migration: settings and key survive (9 checks)
-node .verify/stream-context-test.mjs # Streaming output and context-aware mode (28 checks)
 node .verify/update-test.mjs          # Update check: source parsing, semver, timeout, auth (37 checks)
 node .verify/composer-mode-test.mjs   # Follow composer mode (19 checks)
-node .verify/stream-context-test.mjs  # Streaming output and context-aware mode (28 checks)
-node .verify/stream-throttle-test.mjs # Stream write throttling, keeps the UI alive (14 checks)
 node .verify/disconnect-test.mjs      # A client disconnect must reach the Host (5 checks)
 node .verify/wait-budget-test.mjs     # Wait budget and cancellation (35 checks)
 python3 .verify/icon-weight.py        # Icon visual balance from a real 16px render

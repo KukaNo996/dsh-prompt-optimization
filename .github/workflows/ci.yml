@@ -69,14 +69,6 @@ jobs:
       - name: Composer model mode
         run: node .verify/composer-mode-test.mjs
 
-      - name: Streaming and context-aware mode
-        run: node .verify/stream-context-test.mjs
-
-      # Writing every streamed delta into the composer froze the window; the
-      # write rate must stay bounded by time rather than by the delta count.
-      - name: Stream write throttling
-        run: node .verify/stream-throttle-test.mjs
-
       - name: Wait budget and cancellation
         run: node .verify/wait-budget-test.mjs
 
@@ -84,6 +76,12 @@ jobs:
       # keeps generating into a dead socket.
       - name: Client disconnect handling
         run: node .verify/disconnect-test.mjs
+
+      # The output is pasted straight into the composer, so a leading preamble
+      # reads as an answer to the user. It must be stripped without eating a
+      # prompt that legitimately starts with "请…" or "为…".
+      - name: Preamble stripping
+        run: node .verify/preamble-test.mjs
 
       - name: Localization tests
         run: node .verify/locale-test.mjs

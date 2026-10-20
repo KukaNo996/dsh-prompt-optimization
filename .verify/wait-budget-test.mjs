@@ -170,7 +170,7 @@ await call(handler, 'POST', '/dsh-prompt-optimization/settings', { settings: { m
 hangForever = true
 abortObserved = false
 const startedAt = Date.now()
-response = await call(handler, 'POST', '/dsh-prompt-optimization/optimize/stream', { text: '写个函数', sessionId: 's' })
+response = await call(handler, 'POST', '/dsh-prompt-optimization/optimize', { text: '写个函数', sessionId: 's' })
 const elapsed = Date.now() - startedAt
 
 check('the model call is aborted when the budget runs out', abortObserved, { abortObserved })
@@ -181,16 +181,15 @@ check(
   typeof response.body?.error?.message === 'string' && response.body.error.message.includes('10'),
   response.body?.error?.message,
 )
-check('the stream is closed', response.state.chunks.length > 0, response.state.chunks.length)
 
-// 非流式路由也应遵守同一预算
-await call(handler, 'POST', '/dsh-prompt-optimization/settings', { settings: { maxWaitSeconds: 10, mode: 'account', candidates: 1 } })
+// 同样的预算也必须保护多候选路径（生成 + 评审）
+await call(handler, 'POST', '/dsh-prompt-optimization/settings', { settings: { maxWaitSeconds: 10, mode: 'account', candidates: 3 } })
 abortObserved = false
-const startedAt2 = Date.now()
+const startedAt3 = Date.now()
 response = await call(handler, 'POST', '/dsh-prompt-optimization/optimize', { text: '写个函数', sessionId: 's' })
-const elapsed2 = Date.now() - startedAt2
-check('the plain route also aborts', abortObserved && elapsed2 < 20_000, { abortObserved, elapsed2 })
-check('the plain route reports the budget', response.body?.error?.code === 'wait_budget_exceeded', response.body)
+const elapsed3 = Date.now() - startedAt3
+check('the multi-candidate path also aborts', abortObserved && elapsed3 < 20_000, { abortObserved, elapsed3 })
+check('the multi-candidate path reports the budget', response.body?.error?.code === 'wait_budget_exceeded', response.body)
 
 hangForever = false
 
@@ -199,10 +198,9 @@ hangForever = false
 // ---------------------------------------------------------------------------
 
 await call(handler, 'POST', '/dsh-prompt-optimization/settings', { settings: { maxWaitSeconds: 15, mode: 'account', candidates: 1 } })
-response = await call(handler, 'POST', '/dsh-prompt-optimization/optimize/stream', { text: '写个函数', sessionId: 's' })
-const events = response.raw.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => JSON.parse(line))
-check('a fast model still succeeds', events.some((event) => event.type === 'done'), events)
-check('no error is reported', !events.some((event) => event.type === 'error'), events)
+response = await call(handler, 'POST', '/dsh-prompt-optimization/optimize', { text: '写个函数', sessionId: 's' })
+check('a fast model still succeeds', response.status === 200 && typeof response.body?.optimized === 'string', response.body)
+check('no error is reported', response.body?.error === undefined, response.body)
 
 // ---------------------------------------------------------------------------
 // 4. 客户端侧：忙碌时按钮可点击、能中断
