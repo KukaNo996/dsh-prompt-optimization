@@ -25,6 +25,9 @@ on:
 
 permissions:
   contents: write
+  # Required for npm Trusted Publishing: the workflow exchanges a short-lived OIDC
+  # token for a publish credential, so no long-lived NPM_TOKEN secret is stored.
+  id-token: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -106,17 +109,6 @@ jobs:
           node .github/scripts/release-notes.mjs "${{ steps.version.outputs.version }}" > release-notes.md
           head -40 release-notes.md
 
-      - name: Publish to npm
-        if: ${{ github.event_name == 'push' || inputs.publish_npm }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::warning::NPM_TOKEN is not configured; skipping the npm publish step"
-            exit 0
-          fi
-          npm publish --registry=https://registry.npmjs.org --provenance --access public
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -129,3 +121,16 @@ jobs:
             ${{ steps.pack.outputs.tarball }}.sha256
           fail_on_unmatched_files: true
           generate_release_notes: false
+
+      # Runs after the GitHub Release so a missing/failed npm publish never costs
+      # us the tagged release: the tarball is already downloadable either way.
+      # continue-on-error keeps the run green while still reporting the problem.
+      # Trusted Publishing: setup-node is given no token, so npm picks up the
+      # OIDC identity this job was granted and exchanges it at publish time.
+      # Register the workflow at
+      # https://www.npmjs.com/package/dsh-promt-refine/access -> Trusted Publishers
+      # (KukaNo996 / dsh-promt-refine / .github/workflows/release.yml).
+      - name: Publish to npm
+        if: ${{ github.event_name == 'push' || inputs.publish_npm }}
+        continue-on-error: true
+        run: npm publish --registry=https://registry.npmjs.org --provenance --access public
