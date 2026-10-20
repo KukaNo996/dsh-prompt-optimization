@@ -64,6 +64,26 @@ jobs:
         with:
           node-version: 22
 
+      # Trusted Publishing needs npm >= 11.5.1, but the Node 22 distribution still
+      # bundles npm 10.9.x. With an older npm the publish silently skips the OIDC
+      # exchange and fails as an unauthenticated request, which surfaced as a
+      # misleading 404/ENEEDAUTH on every release.
+      - name: Upgrade npm for OIDC
+        run: |
+          set -euo pipefail
+          npm install -g npm@^11.5.1
+          NPM_VERSION="$(npm --version)"
+          echo "npm version: $NPM_VERSION"
+          node -e '
+            const [major, minor] = process.argv[1].split(".").map(Number)
+            if (major > 11 || (major === 11 && minor >= 5)) {
+              console.log("npm supports OIDC trusted publishing")
+            } else {
+              console.log("::error::npm " + process.argv[1] + " cannot use trusted publishing; need >= 11.5.1")
+              process.exit(1)
+            }
+          ' "$NPM_VERSION"
+
       - name: Resolve version
         id: version
         run: |
