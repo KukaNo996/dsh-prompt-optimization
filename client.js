@@ -507,7 +507,7 @@ window.__ModuleLoader__.load({
 .dsh-pr-field { display: flex; flex-direction: column; gap: 6px; }
 .dsh-pr-label { font-size: 13px; line-height: 20px; font-weight: 500; color: var(--dsw-alias-label-primary); }
 .dsh-pr-hint { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); }
-.dsh-pr-cost { margin-top: 6px; color: var(--dsw-alias-state-warn-primary); }
+.dsh-pr-cost { margin-top: 4px; color: var(--dsw-alias-state-warn-primary); }
 .dsh-pr-input, .dsh-pr-textarea { box-sizing: border-box; width: 100%; padding: 6px 12px; border: 0.5px solid var(--dsw-alias-border-l4);
   border-radius: var(--dsw-radius-md, 12px); background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary);
   font: inherit; font-size: 13px; line-height: 20px; }
@@ -749,46 +749,45 @@ window.__ModuleLoader__.load({
             h('div', { className: 'dsh-pr-row-title' }, t('settings.evaluate')),
             h('div', { className: 'dsh-pr-row-desc' }, t('settings.evaluateHint')),
             form.evaluate
-              ? h('div', { className: 'dsh-pr-hint dsh-pr-cost', role: 'note' }, t('settings.evaluateCost', { count: form.candidates, count2: String(Number(form.candidates) + 1) }))
+              ? h('div', { className: 'dsh-pr-row-desc dsh-pr-cost', role: 'note' }, t('settings.evaluateCost', { count: form.candidates, count2: String(Number(form.candidates) + 1) }))
               : null,
           ),
-          h(
-            'div',
-            { className: 'dsh-pr-form', style: { flex: '0 1 620px' } },
-            h(
-              'div',
-              { className: 'dsh-pr-inline', style: { alignItems: 'center' } },
-              h('button', {
-                type: 'button',
-                role: 'switch',
-                'aria-checked': form.evaluate ? 'true' : 'false',
-                'aria-label': t('settings.evaluate'),
-                className: 'dsh-pr-switch',
-                'data-on': form.evaluate ? 'true' : 'false',
-                onClick: () => update('evaluate', !form.evaluate),
-              }, h('span', { className: 'dsh-pr-switch-thumb' })),
-              form.evaluate
-                ? h(Field, {
-                    id: 'dsh-pr-candidates',
-                    label: t('settings.candidates'),
-                    hint: t('settings.candidatesHint'),
-                    children: h(
-                      'select',
-                      {
-                        id: 'dsh-pr-candidates',
-                        className: 'dsh-pr-input',
-                        value: form.candidates,
-                        onChange: (event) => update('candidates', event.target.value),
-                      },
-                      [2, 3, 4, 5].map((value) =>
-                        h('option', { key: value, value: String(value) }, t('settings.candidatesOption', { count: String(value) })),
-                      ),
-                    ),
-                  })
-                : null,
-            ),
-          ),
+          h('button', {
+            type: 'button',
+            role: 'switch',
+            'aria-checked': form.evaluate ? 'true' : 'false',
+            'aria-label': t('settings.evaluate'),
+            className: 'dsh-pr-switch',
+            'data-on': form.evaluate ? 'true' : 'false',
+            onClick: () => update('evaluate', !form.evaluate),
+          }, h('span', { className: 'dsh-pr-switch-thumb' })),
         ),
+
+        form.evaluate
+          ? h(
+              'div',
+              { className: 'dsh-pr-row' },
+              h(
+                'div',
+                { style: { flex: '1 1 260px', minWidth: 0 } },
+                h('div', { className: 'dsh-pr-row-title' }, t('settings.candidates')),
+                h('div', { className: 'dsh-pr-row-desc' }, t('settings.candidatesHint')),
+              ),
+              h(
+                'div',
+                { style: { flex: '0 0 180px' } },
+                h('select', {
+                  id: 'dsh-pr-candidates',
+                  className: 'dsh-pr-input',
+                  value: form.candidates,
+                  'aria-label': t('settings.candidates'),
+                  onChange: (event) => update('candidates', event.target.value),
+                }, [2, 3, 4, 5].map((value) =>
+                  h('option', { key: value, value: String(value) }, t('settings.candidatesOption', { count: String(value) })),
+                )),
+              ),
+            )
+          : null,
 
         h(
           'div',
