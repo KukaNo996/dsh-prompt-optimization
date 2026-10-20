@@ -59,7 +59,304 @@ const DEFAULT_SETTINGS = Object.freeze({
   // 默认关闭：工具栏只显示图标；开启后才显示文字。
   showLabel: false,
   candidates: 1,
+  // Update checks stay opt-in: nothing leaves the machine until the user clicks.
+  updateCheckEnabled: false,
+  // Empty means "use the built-in source order"; a value overrides it.
+  updateSource: '',
 })
+
+// ---------------------------------------------------------------------------
+// Update checking
+//
+// The plugin is distributed through npm and published on GitHub, so a version
+// can be learned from either place. Both are plain HTTPS GETs with a short
+// timeout; nothing is downloaded and nothing is installed — this only reports
+// whether a newer version exists.
+//
+// The source is configurable because mirrors are common (registry.npmmirror.com
+// inside mainland China), and an air-gapped deployment can point at an internal
+// mirror that serves the same JSON shapes.
+// ---------------------------------------------------------------------------
+
+/** Timeout for one update-source request: these are tiny JSON documents. */
+const UPDATE_TIMEOUT_MS = 10_000
+/** Hard cap on a metadata response so a hostile mirror cannot exhaust memory. */
+const UPDATE_MAX_BYTES = 2_000_000
+
+const PACKAGE_NAME = 'dsh-prompt-optimization'
+const REPOSITORY_URL = 'https://github.com/KukaNo996/dsh-prompt-optimization'
+
+/**
+ * Built-in sources, tried in order until one answers.
+ *
+ * `npm` reads the registry packument (`dist-tags.latest`); `github` reads the
+ * releases API, which also yields the release page for the update link.
+ */
+const UPDATE_SOURCES = Object.freeze({
+  npm: {
+    kind: 'npm',
+    url: `https://registry.npmjs.org/${PACKAGE_NAME}`,
+    label: 'npm registry',
+  },
+  npmmirror: {
+    kind: 'npm',
+    url: `https://registry.npmmirror.com/${PACKAGE_NAME}`,
+    label: 'npmmirror',
+  },
+  github: {
+    kind: 'github',
+    url: `https://api.github.com/repos/KukaNo996/${PACKAGE_NAME}/releases/latest`,
+    label: 'GitHub Releases',
+  },
+})
+
+/** Order used when the setting is empty. */
+const DEFAULT_UPDATE_SOURCE_ORDER = Object.freeze(['npm', 'npmmirror', 'github'])
+
+/**
+ * Read the running version from the package manifest next to this module.
+ * Cached because it cannot change while the Host process is alive.
+ */
+let cachedCurrentVersion
+async function currentVersion() {
+  if (cachedCurrentVersion) return cachedCurrentVersion
+  try {
+    const text = await readFile(new URL('./package.json', import.meta.url), 'utf8')
+    const parsed = JSON.parse(text)
+    cachedCurrentVersion = typeof parsed.version === 'string' ? parsed.version : '0.0.0'
+  } catch {
+    cachedCurrentVersion = '0.0.0'
+  }
+  return cachedCurrentVersion
+}
+
+/**
+ * Parse a semantic version into comparable parts.
+ * Accepts an optional leading "v" and an optional prerelease suffix.
+ * @returns {{major:number,minor:number,patch:number,pre:readonly string[]} | null}
+ */
+function parseVersion(raw) {
+  if (typeof raw !== 'string') return null
+  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(raw.trim())
+  if (!match) return null
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    // Build metadata is ignored; prerelease identifiers decide ordering.
+    pre: match[4] ? match[4].split('.') : [],
+  }
+}
+
+/**
+ * Compare two parsed versions following semver precedence.
+ * @returns {number} negative when a < b, 0 when equal, positive when a > b
+ */
+function compareVersions(a, b) {
+  for (const key of ['major', 'minor', 'patch']) {
+    if (a[key] !== b[key]) return a[key] - b[key]
+  }
+  // A version without a prerelease outranks one with a prerelease.
+  if (!a.pre.length && !b.pre.length) return 0
+  if (!a.pre.length) return 1
+  if (!b.pre.length) return -1
+  const length = Math.max(a.pre.length, b.pre.length)
+  for (let index = 0; index < length; index += 1) {
+    const left = a.pre[index]
+    const right = b.pre[index]
+    if (left === undefined) return -1
+    if (right === undefined) return 1
+    const leftNumeric = /^\d+$/.test(left)
+    const rightNumeric = /^\d+$/.test(right)
+    if (leftNumeric && rightNumeric) {
+      const delta = Number(left) - Number(right)
+      if (delta !== 0) return delta
+    } else if (leftNumeric !== rightNumeric) {
+      // Numeric identifiers always have lower precedence than alphanumeric ones.
+      return leftNumeric ? -1 : 1
+    } else if (left !== right) {
+      return left < right ? -1 : 1
+    }
+  }
+  return 0
+}
+
+/**
+ * Normalise a configured update source.
+ *
+ * Accepted forms:
+ * - a built-in alias: "npm" | "npmmirror" | "github"
+ * - an absolute http(s) URL to a registry packument or a releases endpoint
+ *
+ * Anything else is rejected so a typo cannot silently disable the feature.
+ * @returns {{kind:'npm'|'github', url:string, label:string} | null}
+ */
+function resolveUpdateSource(raw) {
+  const value = typeof raw === 'string' ? raw.trim() : ''
+  if (!value) return null
+
+  const key = value.toLowerCase()
+  if (Object.prototype.hasOwnProperty.call(UPDATE_SOURCES, key)) return UPDATE_SOURCES[key]
+
+  let url
+  try {
+    url = new URL(value)
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+  const isGithub = /(^|\.)api\.github\.com$/i.test(url.hostname)
+  return {
+    kind: 'auto',
+    url: url.toString(),
+    label: url.hostname,
+    hostIsGithub: isGithub,
+  }
+}
+
+/** The ordered list of sources a check will try. */
+function updateSourceCandidates(settings) {
+  const configured = resolveUpdateSource(settings.updateSource)
+  // An explicit source is tried alone: the user asked for that one specifically.
+  if (configured) return [configured]
+  return DEFAULT_UPDATE_SOURCE_ORDER.map((name) => UPDATE_SOURCES[name])
+}
+
+/** Read a JSON body with a byte cap so a huge response cannot exhaust memory. */
+async function fetchJsonCapped(url, signal) {
+  // fetch has no timeout of its own: an unreachable host would hang until the OS
+  // gives up, which can be minutes. Race it against a deadline, and forward the
+  // caller's abort so a cancelled request stops the lookup too.
+  const controller = new AbortController()
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, UPDATE_TIMEOUT_MS)
+  const onAbort = () => controller.abort()
+  if (signal) {
+    if (signal.aborted) controller.abort()
+    else signal.addEventListener('abort', onAbort, { once: true })
+  }
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: {
+        accept: 'application/json',
+        // GitHub rejects requests without a User-Agent.
+        'user-agent': `dsh-prompt-optimization/${await currentVersion()}`,
+      },
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const declaredLength = Number(response.headers.get('content-length') || 0)
+    if (declaredLength > UPDATE_MAX_BYTES) throw new Error('响应体过大')
+    const text = await response.text()
+    if (text.length > UPDATE_MAX_BYTES) throw new Error('响应体过大')
+    return JSON.parse(text)
+  } catch (error) {
+    // The caller cancelled: let the route answer 499 rather than a plain failure.
+    if (signal?.aborted) {
+      const aborted = new Error('aborted')
+      aborted.name = 'AbortError'
+      throw aborted
+    }
+    if (timedOut) throw new Error(`请求超时（${UPDATE_TIMEOUT_MS / 1000} 秒）`)
+    throw error
+  } finally {
+    clearTimeout(timer)
+    if (signal) signal.removeEventListener('abort', onAbort)
+  }
+}
+
+/**
+ * Extract a version from one source's response.
+ *
+ * A custom source may be a mirror or a proxy, so the payload shape decides how
+ * to read it rather than the hostname: a releases document carries `tag_name`,
+ * a packument carries `dist-tags`.
+ * @returns {{version:string, url:string} | null}
+ */
+function readVersionFromPayload(source, payload) {
+  if (!payload || typeof payload !== 'object') return null
+
+  const releaseUrl = typeof payload.html_url === 'string' ? payload.html_url : `${REPOSITORY_URL}/releases`
+  const tag = typeof payload.tag_name === 'string' ? payload.tag_name.replace(/^v/i, '') : ''
+  if (tag && parseVersion(tag)) return { version: tag, url: releaseUrl }
+
+  const latest = payload['dist-tags'] && typeof payload['dist-tags'].latest === 'string' ? payload['dist-tags'].latest : ''
+  if (parseVersion(latest)) return { version: latest, url: `${REPOSITORY_URL}/releases` }
+
+  return null
+}
+
+/**
+ * Check every configured source until one yields a version.
+ * @returns {Promise<{ok:boolean, currentVersion:string, latestVersion?:string,
+ *   updateAvailable?:boolean, source?:string, releaseUrl?:string,
+ *   publishedAt?:string, errors?:string[]}>}
+ */
+async function checkForUpdate(settings, signal) {
+  const current = await currentVersion()
+  const currentParsed = parseVersion(current)
+  const errors = []
+
+  for (const source of updateSourceCandidates(settings)) {
+    try {
+      const payload = await fetchJsonCapped(source.url, signal)
+      const found = readVersionFromPayload(source, payload)
+      if (!found) {
+        errors.push(`${source.label}: 响应中没有可识别的版本号`)
+        continue
+      }
+      const latestParsed = parseVersion(found.version)
+      const updateAvailable = currentParsed ? compareVersions(latestParsed, currentParsed) > 0 : false
+      return {
+        ok: true,
+        currentVersion: current,
+        latestVersion: found.version,
+        updateAvailable,
+        source: source.label,
+        releaseUrl: found.url,
+        publishedAt: typeof payload.time === 'object' && typeof payload.time.modified === 'string' ? payload.time.modified : undefined,
+      }
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error
+      errors.push(`${source.label}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  return { ok: false, currentVersion: current, errors }
+}
+
+async function handleUpdateCheck(ctx, req, res) {
+  const settings = await readSettingsFile()
+  // A source supplied by the page wins over the saved one, so an edit can be
+  // tested before it is saved. Reading the body is best-effort: a GET has none.
+  let requestedSource = ''
+  if ((req.method || 'GET').toUpperCase() === 'POST') {
+    try {
+      const body = await readJsonBody(req)
+      if (body && typeof body.updateSource === 'string') requestedSource = body.updateSource
+    } catch {
+      // A malformed body just falls back to the saved source.
+    }
+  }
+  const effective = requestedSource.trim() ? { ...settings, updateSource: requestedSource } : settings
+  const link = connectionSignal(req, res)
+  try {
+    const result = await checkForUpdate(effective, link.signal)
+    sendJson(res, 200, result)
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      sendJson(res, 499, { error: { code: 'aborted', message: '请求已取消。' } })
+      return
+    }
+    throw error
+  } finally {
+    link.dispose()
+  }
+}
 
 /**
  * Built-in refinement instruction.
@@ -200,6 +497,11 @@ function normalizeSettings(raw, current) {
     systemPrompt: asString(input.systemPrompt, base.systemPrompt),
     showLabel: typeof input.showLabel === 'boolean' ? input.showLabel : base.showLabel === true,
     candidates,
+    updateCheckEnabled:
+      typeof input.updateCheckEnabled === 'boolean' ? input.updateCheckEnabled : base.updateCheckEnabled === true,
+    // A malformed source is dropped on save rather than persisted, so the next
+    // check falls back to the built-in order instead of failing silently.
+    updateSource: asString(input.updateSource, base.updateSource).trim(),
   }
 }
 
@@ -332,7 +634,15 @@ function publicSettings(settings, options) {
     hasApiKey: Boolean(key),
     apiKeyMasked: maskApiKey(key),
     keyStorage: options?.keyStorage || (apiKey ? 'file' : 'none'),
-    defaults: { systemPrompt: DEFAULT_REFINE_INSTRUCTION },
+    defaults: {
+      systemPrompt: DEFAULT_REFINE_INSTRUCTION,
+      // Offered as quick picks in the page so a mirror does not have to be typed.
+      updateSources: DEFAULT_UPDATE_SOURCE_ORDER.map((name) => ({
+        name,
+        url: UPDATE_SOURCES[name].url,
+        label: UPDATE_SOURCES[name].label,
+      })),
+    },
   }
 }
 
@@ -901,6 +1211,12 @@ function createHandler(ctx, options) {
         if (method === 'GET') return await handleSettingsGet(ctx, res)
         if (method === 'POST') return await handleSettingsSave(ctx, req, res)
         throw new HttpError(405, 'method_not_allowed', '仅支持 GET 或 POST。')
+      }
+      // Checking for updates is a read-only metadata lookup, so it is not part of
+      // the model call budget: it neither costs tokens nor depends on the model.
+      if (path === `${ROUTE_BASE}/update-check`) {
+        if (method !== 'GET' && method !== 'POST') throw new HttpError(405, 'method_not_allowed', '仅支持 GET 或 POST。')
+        return await handleUpdateCheck(ctx, req, res)
       }
       if (path === `${ROUTE_BASE}/optimize` || path === `${ROUTE_BASE}/test`) {
         if (method !== 'POST') throw new HttpError(405, 'method_not_allowed', '仅支持 POST。')

@@ -34,8 +34,9 @@
 | **空输入引导** | 未填写内容时点击优化，提示语会逐字写入输入框，停留 5 秒后逐字删除；开始输入即自动停止 |
 | **引用保护** | 草稿含文件/会话引用芯片时自动禁用，避免改写丢失引用 |
 | **失败安全** | 草稿在请求期间被修改则不覆盖本次结果；请求可随页面关闭/切会话立即中止 |
+| **检查更新** | 设置页可检查是否有新版本，**更新源可自定义**（npm registry / GitHub Releases / 任意镜像），只读版本号、不下载安装 |
 
-插件界面与词典均提供**中文和英文**。
+插件界面与词典提供**简体中文、繁体中文、日语和英语**。
 
 ---
 
@@ -94,8 +95,27 @@ plugin_manager install_bundle target=<克隆目录的绝对路径>
 | 优化指令 | 自定义 system prompt，留空用内置指令 | 内置 |
 | 多候选评估 | 开关 + 候选份数（2–5） | 关闭 / 1 份 |
 | 显示提示文字 | 开启后按钮显示「优化提示词」和「撤回」文字，关闭时只显示图标 | 关闭（仅图标） |
+| 更新源 | 检查更新时使用的地址；留空按内置顺序尝试 | 自动 |
 
 可随时用「测试连接」验证当前配置；配置未保存到可调用状态时，保存仍会成功，但优化会返回可读的错误提示。
+
+### 检查更新
+
+设置页底部有「检查更新」区块，点击后查询是否有新版本。**它只读取版本号，不下载、不安装，也不会写入设置文件。**
+
+更新源支持三种写法，填在「更新源」输入框即可：
+
+| 写法 | 示例 |
+| --- | --- |
+| 内置别名 | `npm`、`npmmirror`、`github` |
+| npm registry 包地址 | `https://registry.npmmirror.com/dsh-prompt-optimization` |
+| GitHub Releases API 地址 | `https://api.github.com/repos/KukaNo996/dsh-prompt-optimization/releases/latest` |
+
+留空时依次尝试 **npm registry → npmmirror → GitHub Releases**，任一成功即返回。
+
+- 自定义源按**响应内容**识别格式（`dist-tags.latest` 或 `tag_name`），因此镜像站、代理都可用，不依赖域名。
+- 单个源超时 10 秒，失败自动回退到下一个；全部失败会逐条列出原因。
+- 版本比较遵循语义化版本优先级，正确处理预发布版本。
 
 ### 模型解析顺序（跟随模式）
 
@@ -135,10 +155,12 @@ plugin_manager install_bundle target=<克隆目录的绝对路径>
 | `/settings` | GET / POST | 读取 / 保存设置（密钥只写不读） |
 | `/optimize` | POST | 执行改写（含多候选评估） |
 | `/test` | POST | 测试连接 |
+| `/update-check` | GET / POST | 检查更新（不占模型调用额度） |
 
 - 跟随模式走 DSH `llm` 服务（自带账户鉴权与重试）；自定义模式由主机侧请求 OpenAI 兼容 `/chat/completions`
 - 评估：`candidates > 1` 时并行生成 N 份，再发一次只返回编号的评审请求；评审失败或无有效编号时退回确定性评分（结构 + 数字/标识符保留率 + 长度比）
 - 取消：`req.on('close')` 触发 AbortSignal，透传给 `llm.stream` / `fetch`
+- 检查更新：对更新源发起 HTTPS GET（10 秒超时、2 MB 上限），按响应内容识别 npm packument 或 GitHub release，用语义化版本规则比较；只读，不写设置文件
 
 ### 客户端侧（`client.js`）
 
@@ -166,6 +188,8 @@ node .verify/hint-animation-test.mjs  # 空输入提示动画：打字/停留/�
 node .verify/icon-test.mjs            # 图标结构约定（16 项）
 node .verify/locale-test.mjs          # 多语言解析与键一致性（36 项）
 node .verify/translate-sim.mjs        # 各语言实际输出（14 项）
+node .verify/rename-migration-test.mjs # 改名迁移：设置与 API Key 无损（9 项）
+node .verify/update-test.mjs          # 检查更新：源解析、版本比较、超时与鉴权（37 项）
 python3 .verify/icon-weight.py        # 真实 16px 渲染下的图标视觉平衡
 ```
 

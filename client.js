@@ -79,6 +79,20 @@ window.__ModuleLoader__.load({
       "settings.testOk": "连接成功 · {model} · {latency} ms",
       "settings.testing": "测试中…",
       "settings.title": "提示词优化",
+      "settings.updateAvailable": "发现新版本 {latest}（当前 {current}）。",
+      "settings.updateCheck": "检查更新",
+      "settings.updateCheckedVia": "更新源：{source}",
+      "settings.updateChecking": "检查中…",
+      "settings.updateCurrent": "当前版本 {current}。",
+      "settings.updateFailed": "检查更新失败：{message}",
+      "settings.updateHint": "查询是否有新版本。只读取版本号，不会自动下载或安装。",
+      "settings.updateOpenRelease": "打开发布页面",
+      "settings.updateSource": "更新源（留空使用默认顺序）",
+      "settings.updateSourceAuto": "自动",
+      "settings.updateSourceHint": "可填 npm registry 包地址或 GitHub Releases API 地址；留空则依次尝试内置源。",
+      "settings.updateSourcePlaceholder": "例如 https://registry.npmmirror.com/dsh-prompt-optimization",
+      "settings.updateTitle": "检查更新",
+      "settings.updateUpToDate": "已是最新版本（{current}）。",
       "tool.busy": "优化中…",
       "tool.draftChanged": "草稿在优化期间发生了变化，本次结果未应用。",
       "tool.empty": "请先输入需要优化的提示词。",
@@ -146,6 +160,20 @@ window.__ModuleLoader__.load({
       "settings.testOk": "連線成功 · {model} · {latency} ms",
       "settings.testing": "測試中…",
       "settings.title": "提示詞優化",
+      "settings.updateAvailable": "發現新版本 {latest}（目前 {current}）。",
+      "settings.updateCheck": "檢查更新",
+      "settings.updateCheckedVia": "更新來源：{source}",
+      "settings.updateChecking": "檢查中…",
+      "settings.updateCurrent": "目前版本 {current}。",
+      "settings.updateFailed": "檢查更新失敗：{message}",
+      "settings.updateHint": "查詢是否有新版本。只讀取版本號，不會自動下載或安裝。",
+      "settings.updateOpenRelease": "開啟發佈頁面",
+      "settings.updateSource": "更新來源（留空使用預設順序）",
+      "settings.updateSourceAuto": "自動",
+      "settings.updateSourceHint": "可填 npm registry 套件位址或 GitHub Releases API 位址；留空則依序嘗試內建來源。",
+      "settings.updateSourcePlaceholder": "例如 https://registry.npmmirror.com/dsh-prompt-optimization",
+      "settings.updateTitle": "檢查更新",
+      "settings.updateUpToDate": "已是最新版本（{current}）。",
       "tool.busy": "優化中…",
       "tool.draftChanged": "草稿在優化期間發生了變化，本次結果未套用。",
       "tool.empty": "請先輸入需要優化的提示詞。",
@@ -213,6 +241,20 @@ window.__ModuleLoader__.load({
       "settings.testOk": "接続成功 · {model} · {latency} ms",
       "settings.testing": "テスト中…",
       "settings.title": "プロンプト最適化",
+      "settings.updateAvailable": "新しいバージョン {latest} があります（現在 {current}）。",
+      "settings.updateCheck": "更新を確認",
+      "settings.updateCheckedVia": "更新元：{source}",
+      "settings.updateChecking": "確認中…",
+      "settings.updateCurrent": "現在のバージョンは {current} です。",
+      "settings.updateFailed": "更新の確認に失敗しました：{message}",
+      "settings.updateHint": "新しいバージョンがあるか確認します。バージョン番号を読むだけで、自動的にダウンロードやインストールは行いません。",
+      "settings.updateOpenRelease": "リリースページを開く",
+      "settings.updateSource": "更新元（空欄なら既定の順序）",
+      "settings.updateSourceAuto": "自動",
+      "settings.updateSourceHint": "npm registry のパッケージ URL または GitHub Releases API の URL を指定できます。空欄なら内蔵の更新元を順に試します。",
+      "settings.updateSourcePlaceholder": "例：https://registry.npmmirror.com/dsh-prompt-optimization",
+      "settings.updateTitle": "更新を確認",
+      "settings.updateUpToDate": "最新バージョンです（{current}）。",
       "tool.busy": "最適化中…",
       "tool.draftChanged": "最適化中に下書きが変更されたため、結果は適用されませんでした。",
       "tool.empty": "最適化するプロンプトを先に入力してください。",
@@ -280,6 +322,20 @@ window.__ModuleLoader__.load({
       "settings.testOk": "Connected · {model} · {latency} ms",
       "settings.testing": "Testing…",
       "settings.title": "Prompt Refine",
+      "settings.updateAvailable": "Version {latest} is available (you have {current}).",
+      "settings.updateCheck": "Check for updates",
+      "settings.updateCheckedVia": "Source: {source}",
+      "settings.updateChecking": "Checking…",
+      "settings.updateCurrent": "Current version {current}.",
+      "settings.updateFailed": "Update check failed: {message}",
+      "settings.updateHint": "Looks up whether a newer version exists. Only the version number is read; nothing is downloaded or installed.",
+      "settings.updateOpenRelease": "Open release page",
+      "settings.updateSource": "Update source (leave empty for the default order)",
+      "settings.updateSourceAuto": "Automatic",
+      "settings.updateSourceHint": "Accepts an npm registry package URL or a GitHub Releases API URL. Leave empty to try the built-in sources in order.",
+      "settings.updateSourcePlaceholder": "e.g. https://registry.npmmirror.com/dsh-prompt-optimization",
+      "settings.updateTitle": "Check for updates",
+      "settings.updateUpToDate": "You are on the latest version ({current}).",
       "tool.busy": "Optimizing…",
       "tool.draftChanged": "The draft changed while optimizing, so the result was not applied.",
       "tool.empty": "Type the prompt you want to optimize first.",
@@ -924,6 +980,12 @@ window.__ModuleLoader__.load({
 .dsh-pr-label { font-size: 13px; line-height: 20px; font-weight: 500; color: var(--dsw-alias-label-primary); }
 .dsh-pr-hint { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-tertiary, var(--dsw-alias-label-secondary)); }
 .dsh-pr-cost { margin-top: 4px; color: var(--dsw-alias-state-warn-primary); }
+.dsh-pr-field-label { font-size: 12px; line-height: 18px; font-weight: 500; color: var(--dsw-alias-label-secondary); }
+.dsh-pr-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.dsh-pr-chip { padding: 4px 10px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: var(--dsw-radius-md, 12px);
+  background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; line-height: 18px; cursor: pointer; }
+.dsh-pr-chip:hover { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-primary); }
+.dsh-pr-chip[data-active="true"] { border-color: var(--dsw-alias-brand-primary); color: var(--dsw-alias-brand-text); }
 .dsh-pr-input, .dsh-pr-textarea { box-sizing: border-box; width: 100%; padding: 6px 12px; border: 0.5px solid var(--dsw-alias-border-l4);
   border-radius: var(--dsw-radius-md, 12px); background: var(--dsw-alias-bg-layer-3); color: var(--dsw-alias-label-primary);
   font: inherit; font-size: 13px; line-height: 20px; }
@@ -976,6 +1038,7 @@ window.__ModuleLoader__.load({
       showLabel: true,
       evaluate: false,
       candidates: '3',
+      updateSource: '',
     }
 
     function toForm(settings) {
@@ -992,6 +1055,7 @@ window.__ModuleLoader__.load({
         showLabel: settings.showLabel === true,
         evaluate: candidates > 1,
         candidates: String(candidates > 1 ? candidates : 3),
+        updateSource: settings.updateSource || '',
       }
     }
 
@@ -1008,6 +1072,11 @@ window.__ModuleLoader__.load({
       const [saving, setSaving] = React.useState(false)
       const [testing, setTesting] = React.useState(false)
       const [status, setStatus] = React.useState(null)
+      // Update checking is independent of saving: it is a read-only lookup that
+      // must stay available even while the form holds unsaved edits.
+      const [checking, setChecking] = React.useState(false)
+      const [updateResult, setUpdateResult] = React.useState(null)
+      const [sourceOptions, setSourceOptions] = React.useState([])
       const mounted = React.useRef(true)
 
       React.useEffect(() => {
@@ -1026,6 +1095,7 @@ window.__ModuleLoader__.load({
             setHasKey(Boolean(payload.hasApiKey))
             setKeyMasked(payload.apiKeyMasked || '')
             if (payload.defaults && payload.defaults.systemPrompt) setDefaultInstruction(payload.defaults.systemPrompt)
+            if (payload.defaults && Array.isArray(payload.defaults.updateSources)) setSourceOptions(payload.defaults.updateSources)
             publishShared({ showLabel: payload.showLabel === true, loaded: true })
             setLoading(false)
           })
@@ -1054,7 +1124,29 @@ window.__ModuleLoader__.load({
         showLabel: form.showLabel,
         // One candidate = plain single-pass refinement; the toggle only adds work.
         candidates: form.evaluate ? form.candidates : '1',
+        updateSource: form.updateSource.trim(),
       })
+
+      /**
+       * Ask the Host whether a newer version exists.
+       *
+       * The source is sent with the request so an unsaved edit is honoured: the
+       * user can paste a mirror URL and check it without saving first.
+       */
+      const checkUpdate = async () => {
+        if (checking) return
+        setChecking(true)
+        setUpdateResult(null)
+        try {
+          const payload = await postJson('/update-check', { updateSource: form.updateSource.trim() })
+          if (!mounted.current) return
+          setUpdateResult({ tone: 'info', ...payload })
+        } catch (error) {
+          if (mounted.current) setUpdateResult({ tone: 'error', message: errorMessage(error) })
+        } finally {
+          if (mounted.current) setChecking(false)
+        }
+      }
 
       const save = async () => {
         if (saving || testing) return
@@ -1465,6 +1557,133 @@ window.__ModuleLoader__.load({
           ),
         ),
 
+        // ---- Update checking -------------------------------------------------
+        // Deliberately placed above the save row: it is a read-only lookup whose
+        // result the user may want to act on before saving anything else.
+        h(
+          'div',
+          { className: 'dsh-pr-row' },
+          h(
+            'div',
+            { style: { flex: '1 1 260px', minWidth: 0 } },
+            h('div', { className: 'dsh-pr-row-title' }, t('settings.updateTitle')),
+            h('div', { className: 'dsh-pr-row-desc' }, t('settings.updateHint')),
+          ),
+          h(
+            'div',
+            { className: 'dsh-pr-form', style: { flex: '0 1 620px' } },
+            h(
+              'div',
+              { className: 'dsh-pr-actions', style: { marginTop: 0 } },
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'dsh-pr-secondary',
+                  disabled: checking,
+                  onClick: checkUpdate,
+                },
+                checking ? h(Spinner) : null,
+                checking ? t('settings.updateChecking') : t('settings.updateCheck'),
+              ),
+            ),
+            h(
+              'label',
+              { className: 'dsh-pr-field-label', htmlFor: 'dsh-pr-update-source' },
+              t('settings.updateSource'),
+            ),
+            h('input', {
+              id: 'dsh-pr-update-source',
+              className: 'dsh-pr-input',
+              type: 'text',
+              spellCheck: false,
+              value: form.updateSource,
+              placeholder: t('settings.updateSourcePlaceholder'),
+              'aria-label': t('settings.updateSource'),
+              onChange: (event) => update('updateSource', event.target.value),
+            }),
+            h('div', { className: 'dsh-pr-row-desc' }, t('settings.updateSourceHint')),
+            sourceOptions.length
+              ? h(
+                  'div',
+                  { className: 'dsh-pr-chips' },
+                  sourceOptions.map((option) =>
+                    h(
+                      'button',
+                      {
+                        key: option.name,
+                        type: 'button',
+                        className: 'dsh-pr-chip',
+                        'data-active': form.updateSource === option.name ? 'true' : 'false',
+                        title: option.url,
+                        onClick: () => update('updateSource', option.name),
+                      },
+                      option.label,
+                    ),
+                  ),
+                  form.updateSource
+                    ? h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'dsh-pr-chip',
+                          'data-active': form.updateSource === '' ? 'true' : 'false',
+                          onClick: () => update('updateSource', ''),
+                        },
+                        t('settings.updateSourceAuto'),
+                      )
+                    : null,
+                )
+              : null,
+            updateResult
+              ? h(
+                  'div',
+                  { className: 'dsh-pr-status', 'data-tone': updateResult.tone, role: 'status' },
+                  updateResult.tone === 'error'
+                    ? t('settings.updateFailed', { message: updateResult.message || '' })
+                    : updateResult.ok === false
+                      ? t('settings.updateFailed', { message: (updateResult.errors || []).join('；') || '—' })
+                      : t('settings.updateCurrent', { current: updateResult.currentVersion || '?' }),
+                )
+              : null,
+            updateResult && updateResult.ok !== false && updateResult.latestVersion
+              ? h(
+                  'div',
+                  { className: 'dsh-pr-status', 'data-tone': updateResult.updateAvailable ? 'warn' : 'ok', role: 'status' },
+                  updateResult.updateAvailable
+                    ? t('settings.updateAvailable', {
+                        latest: updateResult.latestVersion,
+                        current: updateResult.currentVersion || '?',
+                      })
+                    : t('settings.updateUpToDate', { current: updateResult.currentVersion || '?' }),
+                )
+              : null,
+            updateResult && updateResult.updateAvailable && updateResult.releaseUrl
+              ? h(
+                  'div',
+                  { className: 'dsh-pr-actions' },
+                  h(
+                    'a',
+                    {
+                      className: 'dsh-pr-secondary',
+                      href: updateResult.releaseUrl,
+                      target: '_blank',
+                      rel: 'noopener noreferrer',
+                    },
+                    t('settings.updateOpenRelease'),
+                  ),
+                )
+              : null,
+            updateResult && updateResult.source
+              ? h(
+                  'div',
+                  { className: 'dsh-pr-row-desc' },
+                  t('settings.updateCheckedVia', { source: updateResult.source }),
+                )
+              : null,
+          ),
+        ),
+
         h(
           'div',
           { className: 'dsh-pr-row' },
@@ -1503,7 +1722,6 @@ window.__ModuleLoader__.load({
         ),
       )
     }
-
     // ---------------------------------------------------------------------
     // Client plugin
     // ---------------------------------------------------------------------

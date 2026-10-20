@@ -34,8 +34,9 @@ Natural-language requests are usually vague: no context, no scope, no acceptance
 | **Empty-draft guidance** | Clicking optimize on an empty draft types a hint into the composer, holds it for 5 seconds, then erases it character by character; typing cancels it immediately |
 | **Reference guard** | Disabled when the draft contains file/session reference chips, which a plain-text rewrite would drop |
 | **Failure-safe** | If the draft changes during the request the result is not applied; in-flight work aborts on page close or session switch |
+| **Update check** | Check for a newer version from the settings page with a **configurable update source** (npm registry / GitHub Releases / any mirror); reads the version only and installs nothing |
 
-The UI and dictionaries ship in **Chinese and English**.
+The UI and dictionaries ship in **Simplified Chinese, Traditional Chinese, Japanese and English**.
 
 ---
 
@@ -94,8 +95,27 @@ After installation the plugin row appears under **Settings → Plugins**, and it
 | Refinement instruction | Custom system prompt; empty uses the built-in one | built-in |
 | Multi-candidate evaluation | Toggle plus candidate count (2–5) | off / 1 |
 | Show hint text | When on the control shows the "Optimize prompt" and "Undo" labels; when off it shows icons only | off (icon only) |
+| Update source | Address used by the update check; empty tries the built-in order | automatic |
 
 Use **Test connection** to validate the current settings. Incomplete settings still save; the optimization call then returns a readable error instead of failing silently.
+
+### Checking for updates
+
+The settings page ends with a **Check for updates** block. It reports whether a newer version exists — it **reads the version only, downloads and installs nothing, and never rewrites the settings file**.
+
+The update source accepts three forms:
+
+| Form | Example |
+| --- | --- |
+| Built-in alias | `npm`, `npmmirror`, `github` |
+| npm registry package URL | `https://registry.npmmirror.com/dsh-prompt-optimization` |
+| GitHub Releases API URL | `https://api.github.com/repos/KukaNo996/dsh-prompt-optimization/releases/latest` |
+
+When left empty the check tries **npm registry → npmmirror → GitHub Releases** and returns on the first success.
+
+- A custom source is interpreted by its **payload shape** (`dist-tags.latest` or `tag_name`), so mirrors and proxies work regardless of hostname.
+- Each source times out after 10 seconds and the check falls back to the next one; if all fail, every reason is listed.
+- Version comparison follows semver precedence, including prerelease ordering.
 
 ### Model resolution (follow mode)
 
@@ -135,10 +155,12 @@ Registers a same-origin prefix route `/dsh-prompt-optimization/*`:
 | `/settings` | GET / POST | Read / save settings (the key is write-only) |
 | `/optimize` | POST | Run the rewrite, including multi-candidate evaluation |
 | `/test` | POST | Test the connection |
+| `/update-check` | GET / POST | Check for updates (outside the model call budget) |
 
 - Follow mode uses the DSH `llm` service (account auth and retry built in); custom mode calls an OpenAI-compatible `/chat/completions` from the Host
 - Evaluation: with `candidates > 1` it generates N drafts in parallel, then asks the judge once for an index; if the judge fails or returns no valid index it falls back to a deterministic score (structure + numeric/identifier retention + length ratio)
 - Cancellation: `req.on('close')` produces an AbortSignal forwarded to `llm.stream` / `fetch`
+- Update check: an HTTPS GET to the update source (10s timeout, 2 MB cap) that reads a npm packument or a GitHub release by payload shape and compares versions with semver rules; read-only, it never writes the settings file
 
 ### Client half (`client.js`)
 
@@ -166,6 +188,8 @@ node .verify/hint-animation-test.mjs  # Empty-draft guidance: type / hold / eras
 node .verify/icon-test.mjs            # Icon structure contract (16 checks)
 node .verify/locale-test.mjs          # Locale resolution and key parity (36 checks)
 node .verify/translate-sim.mjs        # Actual output per language (14 checks)
+node .verify/rename-migration-test.mjs # Rename migration: settings and key survive (9 checks)
+node .verify/update-test.mjs          # Update check: source parsing, semver, timeout, auth (37 checks)
 python3 .verify/icon-weight.py        # Icon visual balance from a real 16px render
 ```
 

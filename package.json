@@ -1,6 +1,6 @@
 {
   "name": "dsh-prompt-optimization",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "private": false,
   "description": "DeepSeek Harness prompt-refinement plugin: rewrite a rough request into a clear, professional prompt, with one-click undo and a configurable model",
   "keywords": [
@@ -58,7 +58,7 @@
   },
   "scripts": {
     "build:locales": "node .github/scripts/build-locales.mjs",
-    "verify": "node --check index.js && node --check client.js && node .github/scripts/validate-manifest.mjs && node .github/scripts/check-locales.mjs && node .verify/host-test.mjs && node .verify/client-test.mjs && node .verify/hint-animation-test.mjs && node .verify/icon-test.mjs && node .verify/locale-test.mjs && node .verify/translate-sim.mjs && node .verify/rename-migration-test.mjs",
+    "verify": "node --check index.js && node --check client.js && node .github/scripts/validate-manifest.mjs && node .github/scripts/check-locales.mjs && node .verify/host-test.mjs && node .verify/client-test.mjs && node .verify/hint-animation-test.mjs && node .verify/icon-test.mjs && node .verify/locale-test.mjs && node .verify/translate-sim.mjs && node .verify/rename-migration-test.mjs && node .verify/update-test.mjs",
     "test:icons": "python3 .verify/icon-weight.py"
   }
 }
