@@ -126,14 +126,21 @@ jobs:
       # tagged release: the tarball is already downloadable either way.
       # Trusted Publishing: setup-node is given no token, so npm picks up the
       # OIDC identity this job was granted and exchanges it at publish time.
-      # Register the workflow at
-      # https://www.npmjs.com/package/dsh-promt-refine/access -> Trusted Publishers
-      # (KukaNo996 / dsh-promt-refine / .github/workflows/release.yml).
       #
       # The publish failure is reported through ::error:: and the job fails, rather
       # than being swallowed: a green run that silently skipped npm would hide a
       # broken release. The Release above is already created at this point, so the
       # job can be re-run or the tag re-pushed without losing the tarball.
+      #
+      # One-time npm setup (https://www.npmjs.com/package/dsh-promt-refine/access
+      # -> Trusted Publishers -> Add -> GitHub Actions):
+      #   Organization or user : KukaNo996
+      #   Repository           : dsh-promt-refine
+      #   Workflow filename    : release.yml      <-- FILE NAME ONLY, no path
+      #   Environment name     : (leave empty)
+      # npm matches the workflow by file name, so entering
+      # ".github/workflows/release.yml" silently fails to bind and every publish
+      # ends as a 404 "not in this registry".
       - name: Publish to npm
         if: ${{ github.event_name == 'push' || inputs.publish_npm }}
         run: |
