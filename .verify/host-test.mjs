@@ -4,6 +4,7 @@
  * a local mock OpenAI-compatible server, and a fake LLM stream.
  */
 import { createServer } from 'node:http'
+import { randomBytes as cryptoRandomBytes } from 'node:crypto'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -324,6 +325,12 @@ check('optimize route is rate limited', rateLimited !== null && rateLimited.body
 // --- 6d. multi-candidate evaluation ---------------------------------------
 // A fresh handler resets the per-source budget; a dedicated mock returns drafts
 // that differ so the judge can single one out.
+//
+// The N drafts are requested in parallel, so arrival order is not deterministic
+// and no counter may be shared across requests. Instead the judge answers with a
+// position, and the assertion checks that the returned text is exactly the draft
+// that the judge was shown at that position in its own prompt — which is the
+// behaviour that actually matters and is order-independent.
 const judged = []
 const judgeServer = createServer((req, res) => {
   const chunks = []
@@ -331,13 +338,14 @@ const judgeServer = createServer((req, res) => {
   req.on('end', () => {
     const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')
     const system = parsed.messages?.[0]?.content || ''
-    judged.push({ system, user: parsed.messages?.[1]?.content })
-    let content
-    if (system.includes('评审员')) content = '3'
-    else {
-      const index = judged.filter((entry) => !entry.system.includes('评审员')).length
-      content = `# 候选 ${index}\n\n目标：候选草稿 ${index}\n\n1. 步骤一\n2. 步骤二\n\n验收标准：通过`
-    }
+    const user = parsed.messages?.[1]?.content || ''
+    judged.push({ system, user })
+    // Every draft is byte-identical except for a unique nonce, so the chosen
+    // draft can be identified no matter which request arrived first.
+    const nonce = cryptoRandomBytes(3).toString('hex')
+    const content = system.includes('评审员')
+      ? '3'
+      : `# 草稿 ${nonce}\n\n目标：改写草稿\n\n1. 步骤一\n2. 步骤二\n\n验收标准：通过`
     res.setHeader('content-type', 'application/json')
     res.end(JSON.stringify({ choices: [{ message: { role: 'assistant', content } }] }))
   })
@@ -363,7 +371,14 @@ check('evaluation issues N draft calls', draftCalls.length === 3, { draftCalls: 
 check('evaluation issues one judge call', judgeCalls.length === 1, { judgeCalls: judgeCalls.length })
 check('judge sees every candidate', judgeCalls[0]?.user.includes('【候选 1】') && judgeCalls[0]?.user.includes('【候选 3】'), judgeCalls[0]?.user?.slice(0, 200))
 check('judge choice is returned', response.status === 200 && response.body.candidates === 3 && response.body.chosen === 3, response.body)
-check('chosen draft is candidate 3', response.body.optimized.startsWith('# 候选 3'), response.body.optimized)
+// The returned draft must be the one the judge saw at position 3, whatever order
+// the parallel draft requests happened to arrive in.
+const thirdCandidate = /【候选 3】\n([^【]*)/.exec(judgeCalls[0]?.user || '')?.[1]?.trim()
+check(
+  'chosen draft is the judged candidate',
+  Boolean(thirdCandidate) && response.body.optimized === thirdCandidate,
+  { chosen: response.body.optimized?.slice(0, 40), expected: thirdCandidate?.slice(0, 40) },
+)
 response = await call(evalHandler, 'POST', '/dsh-promt-refine/settings', {
   settings: { mode: 'custom', baseURL: `http://127.0.0.1:${judgePort}/v1`, model: 'judge-model', candidates: 1 },
 })
