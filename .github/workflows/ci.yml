@@ -72,6 +72,19 @@ jobs:
       - name: Streaming and context-aware mode
         run: node .verify/stream-context-test.mjs
 
+      # Writing every streamed delta into the composer froze the window; the
+      # write rate must stay bounded by time rather than by the delta count.
+      - name: Stream write throttling
+        run: node .verify/stream-throttle-test.mjs
+
+      - name: Wait budget and cancellation
+        run: node .verify/wait-budget-test.mjs
+
+      # A client that cancels must be noticed by the Host, otherwise the model
+      # keeps generating into a dead socket.
+      - name: Client disconnect handling
+        run: node .verify/disconnect-test.mjs
+
       - name: Localization tests
         run: node .verify/locale-test.mjs
 

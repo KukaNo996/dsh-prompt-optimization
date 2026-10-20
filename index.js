@@ -20,6 +20,16 @@ export const inject = ['webServer']
 const ROUTE_BASE = '/dsh-prompt-optimization'
 const MAX_BODY_BYTES = 1_000_000
 const MAX_INPUT_CHARS = 20_000
+/**
+ * Default and bounds for the end-to-end wait the user is willing to tolerate.
+ *
+ * The promise is "the optimize call returns within N seconds", so the budget
+ * covers the whole operation — context compression, candidate generation and
+ * judging — rather than a single model round trip.
+ */
+const DEFAULT_WAIT_SECONDS = 15
+const MIN_WAIT_SECONDS = 10
+const MAX_WAIT_SECONDS = 600
 const DEFAULT_TIMEOUT_MS = 120_000
 const TEST_TIMEOUT_MS = 45_000
 /** The judge only returns one digit, so it gets a shorter budget than a draft. */
@@ -67,6 +77,8 @@ const DEFAULT_SETTINGS = Object.freeze({
   // Context-aware rewriting is a Beta: off by default, because it costs one
   // extra model call and sends conversation content to the model.
   contextAware: false,
+  // How long the user is willing to wait for one optimization, in seconds.
+  maxWaitSeconds: DEFAULT_WAIT_SECONDS,
 })
 
 // ---------------------------------------------------------------------------
@@ -479,6 +491,28 @@ function asString(value, fallback) {
   return typeof value === 'string' ? value : fallback
 }
 
+/**
+ * Clamp the configured wait budget.
+ *
+ * The user may pick any duration, but it never drops below the floor: a wait
+ * that is too short would make the plugin give up before a model can answer,
+ * which looks like a failure rather than a setting. A value that is not a
+ * number at all falls back to the default rather than silently becoming the
+ * minimum.
+ */
+function normalizeWaitSeconds(value, fallback) {
+  const raw = Number(value)
+  if (!Number.isFinite(raw)) {
+    const saved = Number(fallback)
+    return Number.isFinite(saved) ? clampWaitSeconds(saved) : DEFAULT_WAIT_SECONDS
+  }
+  return clampWaitSeconds(raw)
+}
+
+function clampWaitSeconds(value) {
+  return Math.min(MAX_WAIT_SECONDS, Math.max(MIN_WAIT_SECONDS, Math.round(value)))
+}
+
 /** Coerce arbitrary input into the exact persisted settings shape. */
 function normalizeSettings(raw, current) {
   const base = { ...DEFAULT_SETTINGS, ...(current || {}) }
@@ -520,6 +554,7 @@ function normalizeSettings(raw, current) {
     // check falls back to the built-in order instead of failing silently.
     updateSource: asString(input.updateSource, base.updateSource).trim(),
     contextAware: typeof input.contextAware === 'boolean' ? input.contextAware : base.contextAware === true,
+    maxWaitSeconds: normalizeWaitSeconds(input.maxWaitSeconds, base.maxWaitSeconds),
   }
 }
 
@@ -1236,6 +1271,31 @@ function extractStreamDelta(event) {
 }
 
 /**
+ * Build the end-to-end wait budget for one optimize call.
+ *
+ * The budget spans the whole operation — context compression, candidate
+ * generation, judging — because that is what the user actually waits for. It
+ * aborts the model call when it runs out, and the abort carries a reason so the
+ * handler can tell "the wait budget ran out" apart from other aborts.
+ */
+function waitBudget(seconds) {
+  const controller = new AbortController()
+  const reason = new Error('wait_budget_exceeded')
+  const timer = setTimeout(() => controller.abort(reason), Math.max(1, seconds) * 1000)
+  return {
+    signal: controller.signal,
+    /** End the budget early, for example when the client disconnects. */
+    abort(otherReason) {
+      controller.abort(otherReason)
+    },
+    expired: () => controller.signal.aborted && controller.signal.reason === reason,
+    dispose() {
+      clearTimeout(timer)
+    },
+  }
+}
+
+/**
  * Build the AbortSignal that follows the client connection of one request. A
  * dropped connection only aborts after a short grace period, because Node may
  * report `close` while a keep-alive socket finishes its bookkeeping.
@@ -1243,17 +1303,38 @@ function extractStreamDelta(event) {
 function connectionSignal(req, res) {
   const controller = new AbortController()
   let timer
-  const onClose = () => {
-    if (res.writableEnded || res.destroyed) return
+  const scheduleAbort = () => {
+    if (timer) return
     timer = setTimeout(() => controller.abort(new Error('client disconnected')), DISCONNECT_GRACE_MS)
     if (typeof timer.unref === 'function') timer.unref()
   }
+  const onClose = () => {
+    // A response that already finished normally is not a disconnect: the close
+    // event then only means the keep-alive socket was released. Anything else
+    // — including an aborted stream, where `res.destroyed` is already true —
+    // means the client is gone and the model call must stop.
+    if (res.writableEnded) return
+    scheduleAbort()
+  }
   req.once('close', onClose)
+  // The response can be destroyed without the request emitting `close` first
+  // (an aborted fetch does exactly that). Watching the response as well makes
+  // the disconnect observable in every order the two events can arrive in.
+  // The response object is not guaranteed to be an EventEmitter, so this is
+  // optional: the request's own close event still covers the normal case.
+  if (typeof res.once === 'function') {
+    res.once('close', onClose)
+    res.once('error', onClose)
+  }
   return {
     signal: controller.signal,
     dispose() {
       if (timer) clearTimeout(timer)
       req.removeListener('close', onClose)
+      if (typeof res.removeListener === 'function') {
+        res.removeListener('close', onClose)
+        res.removeListener('error', onClose)
+      }
     },
   }
 }
@@ -1441,6 +1522,14 @@ async function handleOptimizeStream(ctx, req, res, ticket) {
   settings.__sessionId = sessionId
   const count = Math.min(MAX_CANDIDATES, Math.max(1, Math.floor(Number(settings.candidates) || 1)))
   const link = connectionSignal(req, res)
+  // The wait budget is the end-to-end promise to the user. It is chained after
+  // the connection signal, so a disconnect aborts it just as well.
+  const budget = waitBudget(settings.maxWaitSeconds)
+  const onDisconnect = () => budget.abort(link.signal.reason)
+  if (link.signal.aborted) onDisconnect()
+  else link.signal.addEventListener('abort', onDisconnect, { once: true })
+  // Every model call in this request shares the one budget.
+  const budgetSignal = budget.signal
 
   // The stream headers are written before the first model call, so a failure
   // during preparation has to be reported inside the stream rather than as an
@@ -1457,12 +1546,22 @@ async function handleOptimizeStream(ctx, req, res, ticket) {
     res.setHeader('transfer-encoding', 'chunked')
   }
   const emit = (event) => {
+    // Writing to a response whose client is gone does not throw, it just
+    // piles up in a dead socket. Stop as soon as the connection is known to be
+    // gone, so an abandoned stream costs nothing.
+    if (res.writableEnded || res.destroyed) return false
     begin()
-    res.write(`${JSON.stringify(event)}\n`)
+    try {
+      res.write(`${JSON.stringify(event)}\n`)
+      return true
+    } catch {
+      // The socket died between the check and the write.
+      return false
+    }
   }
 
   try {
-    const { instruction, userText } = await prepareRewrite(ctx, settings, text, sessionId, link.signal)
+    const { instruction, userText } = await prepareRewrite(ctx, settings, text, sessionId, budgetSignal)
 
     if (count > 1) {
       // Generate and judge first; the composer stays untouched until the winner
@@ -1471,8 +1570,8 @@ async function handleOptimizeStream(ctx, req, res, ticket) {
       const drafts = await Promise.allSettled(
         Array.from({ length: count }, () =>
           settings.mode === 'custom'
-            ? callCustomEndpoint(settings, instruction, userText, DEFAULT_TIMEOUT_MS, link.signal)
-            : callAccountModel(ctx, settings, instruction, userText, DEFAULT_TIMEOUT_MS, sessionId, link.signal),
+            ? callCustomEndpoint(settings, instruction, userText, DEFAULT_TIMEOUT_MS, budgetSignal)
+            : callAccountModel(ctx, settings, instruction, userText, DEFAULT_TIMEOUT_MS, sessionId, budgetSignal),
         ),
       )
       const candidates = drafts
@@ -1480,12 +1579,15 @@ async function handleOptimizeStream(ctx, req, res, ticket) {
         .map((entry) => entry.value)
       if (candidates.length === 0) {
         const firstError = drafts.find((entry) => entry.status === 'rejected')?.reason
+        if (budget.expired()) {
+          throw new HttpError(504, 'wait_budget_exceeded', `等待超过 ${settings.maxWaitSeconds} 秒，已中止本次优化。`)
+        }
         throw firstError instanceof HttpError ? firstError : new HttpError(502, 'empty_model_output', '模型没有返回可用结果。')
       }
       const texts = candidates.map((candidate) => candidate.text)
       let chosen
       try {
-        chosen = await judgeCandidate(ctx, settings, instruction, text, texts, link.signal)
+        chosen = await judgeCandidate(ctx, settings, instruction, text, texts, budgetSignal)
       } catch {
         chosen = undefined
       }
@@ -1500,8 +1602,9 @@ async function handleOptimizeStream(ctx, req, res, ticket) {
       begin()
       const pieces = chunkText(selected, 24)
       for (const piece of pieces) {
-        if (link.signal.aborted) break
-        emit({ type: 'delta', text: piece })
+        if (budgetSignal.aborted) break
+        // A client that went away mid-replay must not be written to any more.
+        if (!emit({ type: 'delta', text: piece })) break
         await sleep(16)
       }
       ticket.settle()
@@ -1519,17 +1622,34 @@ async function handleOptimizeStream(ctx, req, res, ticket) {
     let accumulated = ''
     const onDelta = async (delta) => {
       accumulated += delta
-      emit({ type: 'delta', text: delta })
+      // When the client is gone the write fails; aborting the model call here
+      // stops the generation instead of letting it run to completion for
+      // nobody.
+      if (!emit({ type: 'delta', text: delta })) {
+        budget.abort(new Error('client disconnected'))
+      }
     }
     const result =
       settings.mode === 'custom'
-        ? await streamCustomEndpoint(settings, instruction, userText, DEFAULT_TIMEOUT_MS, link.signal, onDelta)
-        : await streamAccountModel(ctx, settings, instruction, userText, DEFAULT_TIMEOUT_MS, sessionId, link.signal, onDelta)
+        ? await streamCustomEndpoint(settings, instruction, userText, DEFAULT_TIMEOUT_MS, budgetSignal, onDelta)
+        : await streamAccountModel(ctx, settings, instruction, userText, DEFAULT_TIMEOUT_MS, sessionId, budgetSignal, onDelta)
     ticket.settle()
     emit({ type: 'done', optimized: result.text, model: result.model, candidates: 1, chosen: 1 })
     res.end()
   } catch (error) {
-    if (error?.name === 'AbortError' || link.signal.aborted) {
+    if (error?.name === 'AbortError' || budgetSignal.aborted) {
+      if (budget.expired()) {
+        // The wait budget ran out: say so plainly instead of reporting a
+        // generic abort.
+        const message = `等待超过 ${settings.maxWaitSeconds} 秒，已中止本次优化。`
+        if (started) {
+          emit({ type: 'error', message, code: 'wait_budget_exceeded' })
+          res.end()
+        } else {
+          sendJson(res, 504, { error: { code: 'wait_budget_exceeded', message } })
+        }
+        return
+      }
       // The client went away; nothing to report.
       if (!res.writableEnded) res.end()
       return
@@ -1542,6 +1662,7 @@ async function handleOptimizeStream(ctx, req, res, ticket) {
     }
     throw error
   } finally {
+    budget.dispose()
     link.dispose()
   }
 }
@@ -1590,16 +1711,22 @@ async function handleOptimize(ctx, req, res, ticket) {
   settings.__sessionId = sessionId
   const count = Math.min(MAX_CANDIDATES, Math.max(1, Math.floor(Number(settings.candidates) || 1)))
   const link = connectionSignal(req, res)
+  // The same end-to-end budget as the streaming route, so both behave alike.
+  const budget = waitBudget(settings.maxWaitSeconds)
+  const onDisconnect = () => budget.abort(link.signal.reason)
+  if (link.signal.aborted) onDisconnect()
+  else link.signal.addEventListener('abort', onDisconnect, { once: true })
+  const budgetSignal = budget.signal
   try {
-    const { instruction, userText } = await prepareRewrite(ctx, settings, text, sessionId, link.signal)
+    const { instruction, userText } = await prepareRewrite(ctx, settings, text, sessionId, budgetSignal)
     // Evaluation mode: generate N drafts, then let the judge pick one. The judge
     // call is one extra request, so the token cost grows roughly with N + 1.
     if (count > 1) {
       const drafts = await Promise.allSettled(
         Array.from({ length: count }, () =>
           settings.mode === 'custom'
-            ? callCustomEndpoint(settings, instruction, userText, DEFAULT_TIMEOUT_MS, link.signal)
-            : callAccountModel(ctx, settings, instruction, userText, DEFAULT_TIMEOUT_MS, sessionId, link.signal),
+            ? callCustomEndpoint(settings, instruction, userText, DEFAULT_TIMEOUT_MS, budgetSignal)
+            : callAccountModel(ctx, settings, instruction, userText, DEFAULT_TIMEOUT_MS, sessionId, budgetSignal),
         ),
       )
       const candidates = drafts
@@ -1607,12 +1734,15 @@ async function handleOptimize(ctx, req, res, ticket) {
         .map((entry) => entry.value)
       if (candidates.length === 0) {
         const firstError = drafts.find((entry) => entry.status === 'rejected')?.reason
+        if (budget.expired()) {
+          throw new HttpError(504, 'wait_budget_exceeded', `等待超过 ${settings.maxWaitSeconds} 秒，已中止本次优化。`)
+        }
         throw firstError instanceof HttpError ? firstError : new HttpError(502, 'empty_model_output', '模型没有返回可用结果。')
       }
       const texts = candidates.map((candidate) => candidate.text)
       let chosen
       try {
-        chosen = await judgeCandidate(ctx, settings, instruction, text, texts, link.signal)
+        chosen = await judgeCandidate(ctx, settings, instruction, text, texts, budgetSignal)
       } catch {
         chosen = undefined
       }
@@ -1632,11 +1762,17 @@ async function handleOptimize(ctx, req, res, ticket) {
     }
     const result =
       settings.mode === 'custom'
-        ? await callCustomEndpoint(settings, instruction, userText, DEFAULT_TIMEOUT_MS, link.signal)
-        : await callAccountModel(ctx, settings, instruction, userText, DEFAULT_TIMEOUT_MS, sessionId, link.signal)
+        ? await callCustomEndpoint(settings, instruction, userText, DEFAULT_TIMEOUT_MS, budgetSignal)
+        : await callAccountModel(ctx, settings, instruction, userText, DEFAULT_TIMEOUT_MS, sessionId, budgetSignal)
     ticket.settle()
     sendJson(res, 200, { optimized: result.text, model: result.model, candidates: 1, chosen: 1 })
+  } catch (error) {
+    if (budget.expired()) {
+      throw new HttpError(504, 'wait_budget_exceeded', `等待超过 ${settings.maxWaitSeconds} 秒，已中止本次优化。`)
+    }
+    throw error
   } finally {
+    budget.dispose()
     link.dispose()
   }
 }

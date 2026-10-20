@@ -33,6 +33,8 @@ Natural-language requests are usually vague: no context, no scope, no acceptance
 | **Show hint text** | Off by default (icon only); when on, both "Optimize prompt" and "Undo" labels are shown |
 | **Empty-draft guidance** | Clicking optimize on an empty draft types a hint into the composer, holds it for 2 seconds, then erases it character by character; typing cancels it immediately |
 | **Streaming output** | The rewritten prompt is written into the composer as the model produces it; with multi-candidate evaluation only the selected draft is streamed |
+| **Cancellable optimization** | Click the spinner while the optimization runs to cancel it; the draft is restored |
+| **Maximum wait** | Longest wait for one optimization, 15 seconds by default and 10 seconds at minimum; it aborts on its own |
 | **Optimize with context (Beta)** | Optionally compress the current conversation first and rewrite against it, so the result fits your usual phrasing; off by default |
 | **Reference guard** | Disabled when the draft contains file/session reference chips, which a plain-text rewrite would drop |
 | **Failure-safe** | If the draft changes during the request the result is not applied; in-flight work aborts on page close or session switch |
@@ -99,8 +101,18 @@ After installation the plugin row appears under **Settings → Plugins**, and it
 | Show hint text | When on the control shows the "Optimize prompt" and "Undo" labels; when off it shows icons only | off (icon only) |
 | Update source | Address used by the update check; empty tries the built-in order | automatic |
 | Optimize with context (Beta) | Compress the conversation first, then rewrite against it | off |
+| Maximum wait | Longest wait for one optimization, covering compression, candidate generation and judging | 15 seconds |
 
 Use **Test connection** to validate the current settings. Incomplete settings still save; the optimization call then returns a readable error instead of failing silently.
+
+### Cancelling and the wait budget
+
+While an optimization runs, **clicking the spinner cancels it** and the draft is restored.
+The cancel ends the client request and the host-side model call, so the model does not keep generating in the background.
+
+The **maximum wait** limits how long one optimization may take, **15 seconds by default and 10 seconds at minimum**.
+It covers the whole operation — context compression, candidate generation and judging — not just the last model call.
+When it runs out the plugin stops and says so.
 
 ### Streaming output
 
@@ -226,6 +238,11 @@ node .verify/translate-sim.mjs        # Actual output per language (14 checks)
 node .verify/rename-migration-test.mjs # Rename migration: settings and key survive (9 checks)
 node .verify/stream-context-test.mjs # Streaming output and context-aware mode (28 checks)
 node .verify/update-test.mjs          # Update check: source parsing, semver, timeout, auth (37 checks)
+node .verify/composer-mode-test.mjs   # Follow composer mode (19 checks)
+node .verify/stream-context-test.mjs  # Streaming output and context-aware mode (28 checks)
+node .verify/stream-throttle-test.mjs # Stream write throttling, keeps the UI alive (14 checks)
+node .verify/disconnect-test.mjs      # A client disconnect must reach the Host (5 checks)
+node .verify/wait-budget-test.mjs     # Wait budget and cancellation (35 checks)
 python3 .verify/icon-weight.py        # Icon visual balance from a real 16px render
 ```
 

@@ -53,6 +53,9 @@ window.__ModuleLoader__.load({
       "settings.loading": "正在读取设置…",
       "settings.maxTokens": "最大输出 token",
       "settings.maxTokensHint": "0 表示不限制，交给模型默认值。",
+      "settings.maxWait": "最大等待时长",
+      "settings.maxWaitHint": "优化过程超过该时长会自动中止。默认 15 秒，最低 10 秒。",
+      "settings.maxWaitUnit": "秒",
       "settings.mode": "模型来源",
       "settings.modeAccount": "跟随主程序",
       "settings.modeAccountHint": "默认使用登录账户的 DeepSeek 模型；如果会话已选择模型，则优先使用该模型。",
@@ -100,6 +103,9 @@ window.__ModuleLoader__.load({
       "settings.updateTitle": "检查更新",
       "settings.updateUpToDate": "已是最新版本（{current}）。",
       "tool.busy": "优化中…",
+      "tool.cancel": "中断优化",
+      "tool.cancelHint": "点击中断优化",
+      "tool.cancelled": "已中断优化，草稿已恢复。",
       "tool.draftChanged": "草稿在优化期间发生了变化，本次结果未应用。",
       "tool.empty": "请先输入需要优化的提示词。",
       "tool.failed": "优化失败：{message}",
@@ -140,6 +146,9 @@ window.__ModuleLoader__.load({
       "settings.loading": "正在讀取設定…",
       "settings.maxTokens": "最大輸出 token",
       "settings.maxTokensHint": "0 表示不限制，交給模型預設值。",
+      "settings.maxWait": "最大等待時長",
+      "settings.maxWaitHint": "最佳化過程超過該時長會自動中止。預設 15 秒，最低 10 秒。",
+      "settings.maxWaitUnit": "秒",
       "settings.mode": "模型來源",
       "settings.modeAccount": "跟隨主程式",
       "settings.modeAccountHint": "預設使用登入帳戶的 DeepSeek 模型；如果工作階段已選擇模型，則優先使用該模型。",
@@ -187,6 +196,9 @@ window.__ModuleLoader__.load({
       "settings.updateTitle": "檢查更新",
       "settings.updateUpToDate": "已是最新版本（{current}）。",
       "tool.busy": "優化中…",
+      "tool.cancel": "中止最佳化",
+      "tool.cancelHint": "點擊中止最佳化",
+      "tool.cancelled": "已中止最佳化，草稿已恢復。",
       "tool.draftChanged": "草稿在優化期間發生了變化，本次結果未套用。",
       "tool.empty": "請先輸入需要優化的提示詞。",
       "tool.failed": "優化失敗：{message}",
@@ -227,6 +239,9 @@ window.__ModuleLoader__.load({
       "settings.loading": "設定を読み込み中…",
       "settings.maxTokens": "最大出力トークン",
       "settings.maxTokensHint": "0 は無制限（モデルの既定値）です。",
+      "settings.maxWait": "最大待機時間",
+      "settings.maxWaitHint": "最適化がこの時間を超えると自動的に中止します。既定は 15 秒、最低 10 秒。",
+      "settings.maxWaitUnit": "秒",
       "settings.mode": "モデルの取得元",
       "settings.modeAccount": "アプリに従う",
       "settings.modeAccountHint": "既定ではサインイン中の DeepSeek モデルを使用します。セッションでモデルを選択している場合はそちらを優先します。",
@@ -274,6 +289,9 @@ window.__ModuleLoader__.load({
       "settings.updateTitle": "更新を確認",
       "settings.updateUpToDate": "最新バージョンです（{current}）。",
       "tool.busy": "最適化中…",
+      "tool.cancel": "最適化を中止",
+      "tool.cancelHint": "クリックして最適化を中止",
+      "tool.cancelled": "最適化を中止しました。下書きは元に戻しました。",
       "tool.draftChanged": "最適化中に下書きが変更されたため、結果は適用されませんでした。",
       "tool.empty": "最適化するプロンプトを先に入力してください。",
       "tool.failed": "最適化に失敗しました：{message}",
@@ -314,6 +332,9 @@ window.__ModuleLoader__.load({
       "settings.loading": "Loading settings…",
       "settings.maxTokens": "Max output tokens",
       "settings.maxTokensHint": "0 means unlimited (provider default).",
+      "settings.maxWait": "Maximum wait",
+      "settings.maxWaitHint": "The optimization is stopped automatically after this long. 15 seconds by default, 10 seconds at minimum.",
+      "settings.maxWaitUnit": "seconds",
       "settings.mode": "Model source",
       "settings.modeAccount": "Follow the app",
       "settings.modeAccountHint": "Use the signed-in account DeepSeek model by default; the session-selected model wins when one is set.",
@@ -361,6 +382,9 @@ window.__ModuleLoader__.load({
       "settings.updateTitle": "Check for updates",
       "settings.updateUpToDate": "You are on the latest version ({current}).",
       "tool.busy": "Optimizing…",
+      "tool.cancel": "Cancel optimization",
+      "tool.cancelHint": "Click to cancel the optimization",
+      "tool.cancelled": "Optimization cancelled; the draft was restored.",
       "tool.draftChanged": "The draft changed while optimizing, so the result was not applied.",
       "tool.empty": "Type the prompt you want to optimize first.",
       "tool.failed": "Optimization failed: {message}",
@@ -778,6 +802,16 @@ window.__ModuleLoader__.load({
     const HINT_HOLD_MS = 2000
     const HINT_ERASE_CHUNK = 1
     const HINT_ERASE_MS = 46
+    /**
+     * How often the streamed rewrite is written into the composer.
+     *
+     * A rewrite arrives as well over a hundred small pieces. Writing each one
+     * into the draft makes the host re-render and persist the draft on every
+     * piece, which starves the main thread and freezes the window. Coalescing
+     * the pieces into one write every ~80 ms keeps the text visibly growing
+     * while leaving the UI responsive.
+     */
+    const STREAM_FLUSH_MS = 80
     const toolbarCss = `
 .dsh-pr-wrap { position: relative; display: inline-flex; align-items: center; align-self: center; flex: none; }
 /* Height matches the host's compact toolbar controls; the icon and the label are
@@ -854,6 +888,25 @@ window.__ModuleLoader__.load({
        * timer that was already queued when the cancellation happened.
        */
       const hintRun = React.useRef({ timer: null, phase: 'idle', chars: [], index: 0 })
+      /**
+       * Owner of the pending stream write.
+       *
+       * The stream coalesces its pieces into one draft write every
+       * STREAM_FLUSH_MS; the timer lives in a ref so the cancel button can drop
+       * it from outside the optimize call, and so no re-render is needed to
+       * schedule it.
+       */
+      const streamFlush = React.useRef({ timer: null, pending: '' })
+
+      /** Drop a pending draft write; the caller's own cleanup follows. */
+      const cancelPendingFlush = () => {
+        const state = streamFlush.current
+        if (state.timer !== null) {
+          clearTimeout(state.timer)
+          state.timer = null
+        }
+        state.pending = ''
+      }
 
       const abortInflight = () => {
         const controller = inflight.current
@@ -947,6 +1000,7 @@ window.__ModuleLoader__.load({
         return () => {
           mounted.current = false
           abortInflight()
+          cancelPendingFlush()
           const run = hintRun.current
           if (run.timer !== null) clearTimeout(run.timer)
           run.timer = null
@@ -957,6 +1011,7 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         abortInflight()
         cancelHintAnimation()
+        cancelPendingFlush()
         setBusy(false)
         setOriginal(null)
         setRefined(null)
@@ -1013,6 +1068,41 @@ window.__ModuleLoader__.load({
         // original draft is remembered first so the control can offer "undo"
         // even while the stream is still running.
         setOriginal(source)
+        // Writing every single delta into the draft is what freezes the app:
+        // a rewrite arrives as well over a hundred small pieces, and each
+        // setDraft makes the host re-render, persist and write the draft back
+        // to the session. The main thread never gets a free moment, so the
+        // whole window stops responding. The text is therefore coalesced and
+        // flushed at most a few times per second — fast enough to look
+        // continuous, slow enough to leave the UI responsive.
+        let pendingText = ''
+        let flushTimer = null
+        // Set when the user edits the draft themselves; a pending flush must
+        // then leave their text alone.
+        let takenOver = false
+        const flush = () => {
+          flushTimer = null
+          streamFlush.current.timer = null
+          if (!mounted.current || takenOver || !pendingText) return
+          inputActions.setDraft(pendingText)
+          pendingText = ''
+          streamFlush.current.pending = ''
+        }
+        const scheduleFlush = () => {
+          if (flushTimer !== null) return
+          flushTimer = setTimeout(flush, STREAM_FLUSH_MS)
+          streamFlush.current.timer = flushTimer
+          streamFlush.current.pending = pendingText
+        }
+        const cancelFlush = () => {
+          if (flushTimer !== null) {
+            clearTimeout(flushTimer)
+            flushTimer = null
+          }
+          pendingText = ''
+          streamFlush.current.timer = null
+          streamFlush.current.pending = ''
+        }
         try {
           // The stream writes the refined prompt straight into the draft. The
           // user can watch it being written, which turns a long wait into
@@ -1031,15 +1121,21 @@ window.__ModuleLoader__.load({
               // written so far. Anything else means the user typed.
               if (draftRef.current !== source && draftRef.current !== streamed) {
                 userTookOver = true
+                takenOver = true
+                cancelFlush()
                 return
               }
               streamed += piece
-              // The Host sends the raw model output while it streams; the
-              // final `done` event carries the cleaned version.
-              inputActions.setDraft(streamed)
+              pendingText = streamed
+              // The Host sends the raw model output while it streams; the final
+              // `done` event carries the cleaned version.
+              scheduleFlush()
             },
             controller.signal,
           )
+          // The final text is authoritative: flush whatever is pending and then
+          // write the cleaned result exactly once.
+          cancelFlush()
           const optimized = typeof result.optimized === 'string' ? result.optimized.trim() : ''
           if (!optimized) throw new Error(t('tool.empty'))
           if (!mounted.current) return
@@ -1053,6 +1149,7 @@ window.__ModuleLoader__.load({
           setRefined(optimized)
           inputActions.setDraft(optimized)
         } catch (error) {
+          cancelFlush()
           // A cancelled or superseded request is not a failure worth a message.
           if (isAbortError(error) || !mounted.current) return
           // The partial stream may have replaced the draft; restore the original
@@ -1061,6 +1158,7 @@ window.__ModuleLoader__.load({
           setOriginal(null)
           setMessage({ level: 'error', text: t('tool.failed', { message: errorMessage(error) }) })
         } finally {
+          cancelFlush()
           if (inflight.current === controller) inflight.current = null
           if (mounted.current) setBusy(false)
         }
@@ -1076,15 +1174,46 @@ window.__ModuleLoader__.load({
         setMessage(null)
       }
 
+      /**
+       * Stop a running optimization.
+       *
+       * The spinner is the affordance: clicking it cancels the request and puts
+       * the original draft back, so a cancel never leaves half a rewritten
+       * prompt behind. The request is aborted on the client, and the Host sees
+       * the dropped connection and stops the model call too.
+       */
+      const cancel = () => {
+        if (!busy) return
+        abortInflight()
+        // A pending flush would otherwise write the partial rewrite back over
+        // the original text after the cancel.
+        cancelPendingFlush()
+        // The stream may have replaced the draft with a partial rewrite.
+        if (original !== null && draftRef.current !== original) {
+          inputActions.setDraft(original)
+        }
+        setOriginal(null)
+        setRefined(null)
+        setMessage({ level: 'info', text: t('tool.cancelled') })
+        setBusy(false)
+      }
+
       const locked = phase !== 'plain'
       const isRefined = refined !== null && original !== null
       // Undo stays available even while the composer is busy, so a mistaken
-      // optimization can always be reverted.
-      const disabled = isRefined ? false : busy || locked || hasReferences
+      // optimization can always be reverted. While busy the control doubles as
+      // the cancel button: the spinner itself is the affordance.
+      const disabled = isRefined ? false : locked || hasReferences
       // The preference drives both states: when it is off the control shows an
       // icon only, in the optimized state too, so it never changes width.
       const showText = preferences.showLabel === true
-      const title = isRefined ? t('tool.undoHint') : hasReferences ? t('tool.referencesHint') : t('tool.optimizeHint')
+      const title = busy
+        ? t('tool.cancelHint')
+        : isRefined
+          ? t('tool.undoHint')
+          : hasReferences
+            ? t('tool.referencesHint')
+            : t('tool.optimizeHint')
       const label = busy ? t('tool.busy') : isRefined ? t('tool.undo') : t('tool.optimize')
 
       return h(
@@ -1100,13 +1229,16 @@ window.__ModuleLoader__.load({
             'data-icon-only': showText ? 'false' : 'true',
             'data-refined': isRefined ? 'true' : 'false',
             'data-refs': hasReferences && !isRefined ? 'true' : 'false',
+            // While busy the button stays enabled so the spinner can be clicked
+            // to stop the optimization.
+            'data-busy': busy ? 'true' : 'false',
             disabled,
             title,
-            'aria-label': label,
+            'aria-label': busy ? t('tool.cancel') : label,
             'aria-busy': busy ? 'true' : 'false',
             // Keep the caret/selection in the draft editor, like the host toolbar controls.
             onMouseDown: (event) => event.preventDefault(),
-            onClick: isRefined ? undo : optimize,
+            onClick: busy ? cancel : isRefined ? undo : optimize,
           },
           busy ? h(Spinner) : isRefined ? h(IconUndo) : h(IconSparkle),
           showText ? h('span', null, label) : null,
@@ -1149,6 +1281,9 @@ window.__ModuleLoader__.load({
 .dsh-pr-mode-title { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-primary); }
 .dsh-pr-mode-desc { font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-secondary); }
 .dsh-pr-inline { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+/* A unit that belongs to the value next to it ("15 秒"), rather than a label
+   above the field. */
+.dsh-pr-unit { font-size: 13px; line-height: 20px; color: var(--dsw-alias-label-secondary); white-space: nowrap; }
 .dsh-pr-number { width: 140px; }
 .dsh-pr-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .dsh-pr-primary, .dsh-pr-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 28px; padding: 0 12px;
@@ -1190,6 +1325,7 @@ window.__ModuleLoader__.load({
       candidates: '3',
       updateSource: '',
       contextAware: false,
+      maxWaitSeconds: '15',
     }
 
     function toForm(settings) {
@@ -1211,6 +1347,7 @@ window.__ModuleLoader__.load({
         candidates: String(candidates > 1 ? candidates : 3),
         updateSource: settings.updateSource || '',
         contextAware: settings.contextAware === true,
+        maxWaitSeconds: String(settings.maxWaitSeconds ?? 15),
       }
     }
 
@@ -1281,6 +1418,7 @@ window.__ModuleLoader__.load({
         candidates: form.evaluate ? form.candidates : '1',
         updateSource: form.updateSource.trim(),
         contextAware: form.contextAware,
+        maxWaitSeconds: form.maxWaitSeconds,
       })
 
       /**
@@ -1738,6 +1876,50 @@ window.__ModuleLoader__.load({
               ),
             )
           : null,
+
+        // The wait budget applies to every model source, so it gets its own row
+        // rather than sitting inside the custom-mode block where the other two
+        // modes would not be able to reach it.
+        h(
+          'div',
+          { className: 'dsh-pr-row' },
+          h(
+            'div',
+            { style: { flex: '1 1 260px', minWidth: 0 } },
+            h('div', { className: 'dsh-pr-row-title' }, t('settings.maxWait')),
+            h('div', { className: 'dsh-pr-row-desc' }, t('settings.maxWaitHint')),
+          ),
+          h(
+            'div',
+            { className: 'dsh-pr-form', style: { flex: '0 1 620px' } },
+            // The number and its unit sit side by side: the unit belongs to the
+            // value, not above it, and a lone "秒" label above the field reads
+            // as if it were the field's own title.
+            h(
+              'div',
+              { className: 'dsh-pr-inline', style: { alignItems: 'center' } },
+              h('input', {
+                id: 'dsh-pr-max-wait',
+                className: 'dsh-pr-input dsh-pr-number',
+                type: 'number',
+                style: { flex: '0 1 160px' },
+                // The floor is enforced here as well as on the Host, so the
+                // field never shows a value the Host would refuse.
+                min: 10,
+                max: 600,
+                step: 1,
+                value: form.maxWaitSeconds,
+                'aria-label': t('settings.maxWait'),
+                onChange: (event) => update('maxWaitSeconds', event.target.value),
+                onBlur: (event) => {
+                  const value = Math.max(10, Math.min(600, Math.round(Number(event.target.value) || 15)))
+                  update('maxWaitSeconds', String(value))
+                },
+              }),
+              h('span', { className: 'dsh-pr-unit' }, t('settings.maxWaitUnit')),
+            ),
+          ),
+        ),
 
         h(
           'div',
