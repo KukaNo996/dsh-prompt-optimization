@@ -122,15 +122,25 @@ jobs:
           fail_on_unmatched_files: true
           generate_release_notes: false
 
-      # Runs after the GitHub Release so a missing/failed npm publish never costs
-      # us the tagged release: the tarball is already downloadable either way.
-      # continue-on-error keeps the run green while still reporting the problem.
+      # Runs after the GitHub Release so a failed npm publish never costs us the
+      # tagged release: the tarball is already downloadable either way.
       # Trusted Publishing: setup-node is given no token, so npm picks up the
       # OIDC identity this job was granted and exchanges it at publish time.
       # Register the workflow at
       # https://www.npmjs.com/package/dsh-promt-refine/access -> Trusted Publishers
       # (KukaNo996 / dsh-promt-refine / .github/workflows/release.yml).
+      #
+      # The publish failure is reported through ::error:: and the job fails, rather
+      # than being swallowed: a green run that silently skipped npm would hide a
+      # broken release. The Release above is already created at this point, so the
+      # job can be re-run or the tag re-pushed without losing the tarball.
       - name: Publish to npm
         if: ${{ github.event_name == 'push' || inputs.publish_npm }}
-        continue-on-error: true
-        run: npm publish --registry=https://registry.npmjs.org --provenance --access public
+        run: |
+          set -euo pipefail
+          if npm publish --registry=https://registry.npmjs.org --provenance --access public; then
+            echo "Published to the npm registry"
+          else
+            echo "::error::npm publish failed. The GitHub Release and its tarball are intact; fix the cause and re-run this workflow."
+            exit 1
+          fi

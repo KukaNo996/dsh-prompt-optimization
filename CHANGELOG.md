@@ -3,6 +3,13 @@
 本文件记录本插件的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 1.2.1
+
+### 修复
+
+- 发布工作流不再以 `continue-on-error` 掩盖 npm 发布失败：失败会明确报错并让作业失败（Release 与 tarball 已先行创建，不受影响）。
+- 修正打包体积统计与 README 中的安装版本号示例。
+
 ## 1.2.0
 
 ### 新增
