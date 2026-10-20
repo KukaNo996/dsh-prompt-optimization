@@ -1,63 +1,64 @@
 {
-    "name":  "dsh-promt-refine",
-    "version":  "1.1.0",
-    "private":  false,
-    "description":  "DeepSeek Harness prompt-refinement plugin: rewrite a rough request into a clear, professional prompt, with one-click undo and a configurable model",
-    "keywords":  [
-                     "deepseek-harness",
-                     "dsh",
-                     "cordis",
-                     "prompt",
-                     "prompt-engineering",
-                     "llm",
-                     "plugin"
-                 ],
-    "author":  "KukaNo996",
-    "license":  "MIT",
-    "homepage":  "https://github.com/KukaNo996/dsh-promt-refine#readme",
-    "bugs":  {
-                 "url":  "https://github.com/KukaNo996/dsh-promt-refine/issues"
-             },
-    "repository":  {
-                       "type":  "git",
-                       "url":  "git+https://github.com/KukaNo996/dsh-promt-refine.git"
-                   },
-    "publishConfig":  {
-                          "access":  "public"
-                      },
-    "type":  "module",
-    "main":  "index.js",
-    "exports":  {
-                    ".":  "./index.js",
-                    "./client":  "./client.js",
-                    "./locale/*.json":  "./locale/*.json",
-                    "./icon":  "./icon.svg",
-                    "./package.json":  "./package.json"
-                },
-    "files":  [
-                  "index.js",
-                  "client.js",
-                  "cordis.patch.yml",
-                  "locale/*.json",
-                  "icon.svg"
-              ],
-    "peerDependencies":  {
-                             "@deepseek-ai/cordis":  "~4.0.5"
-                         },
-    "dsh":  {
-                "bundle":  {
-                               "patch":  "./cordis.patch.yml"
-                           },
-                "client":  {
-                               "platform":  "web",
-                               "immediately":  true,
-                               "inject":  [
-                                              "@deepseek-ai/dsh-client-ui-conversation"
-                                          ]
-                           }
-            },
-    "scripts":  {
-                    "build:locales":  "node .github/scripts/build-locales.mjs",
-                    "verify":  "node --check index.js \u0026\u0026 node --check client.js \u0026\u0026 node .github/scripts/validate-manifest.mjs \u0026\u0026 node .github/scripts/check-locales.mjs \u0026\u0026 node .verify/host-test.mjs \u0026\u0026 node .verify/client-test.mjs \u0026\u0026 node .verify/locale-test.mjs"
-                }
+  "name": "dsh-promt-refine",
+  "version": "1.1.0",
+  "private": false,
+  "description": "DeepSeek Harness prompt-refinement plugin: rewrite a rough request into a clear, professional prompt, with one-click undo and a configurable model",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "cordis",
+    "prompt",
+    "prompt-engineering",
+    "llm",
+    "plugin"
+  ],
+  "author": "KukaNo996",
+  "license": "MIT",
+  "homepage": "https://github.com/KukaNo996/dsh-promt-refine#readme",
+  "bugs": {
+    "url": "https://github.com/KukaNo996/dsh-promt-refine/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KukaNo996/dsh-promt-refine.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.5"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "scripts": {
+    "build:locales": "node .github/scripts/build-locales.mjs",
+    "verify": "node --check index.js && node --check client.js && node .github/scripts/validate-manifest.mjs && node .github/scripts/check-locales.mjs && node .verify/host-test.mjs && node .verify/client-test.mjs && node .verify/hint-animation-test.mjs && node .verify/icon-test.mjs && node .verify/locale-test.mjs && node .verify/translate-sim.mjs",
+    "test:icons": "python3 .verify/icon-weight.py"
+  }
 }

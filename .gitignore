@@ -1,28 +1,24 @@
-# 渚濊禆
-node_modules/
+# 娓氭繆绂?node_modules/
 .pnpm-store/
 
-# 鏋勫缓浜х墿
-dist/
+# 閺嬪嫬缂撴禍褏澧?dist/
 build/
 out/
 *.tgz
 
-# 鏃ュ織
-logs/
+# 閺冦儱绻?logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# 鏈湴鐜涓庨厤缃?.env
+# 閺堫剙婀撮悳顖氼暔娑撳酣鍘ょ純?.env
 .env.*
 *.local
 *.local.json
 
-# 缂栬緫鍣ㄤ笌绯荤粺
-.vscode/
+# 缂傛牞绶崳銊ょ瑢缁崵绮?.vscode/
 .idea/
 .DS_Store
 Thumbs.db
@@ -34,8 +30,10 @@ tmp/
 coverage/
 *.tsbuildinfo
 
-# 宸ュ叿杩愯鏃剁殑鏈湴璁板繂鏂囦欢
-.workbuddy/
+# 瀹搞儱鍙挎潻鎰攽閺冨墎娈戦張顒€婀寸拋鏉跨箓閺傚洣娆?.workbuddy/
 
-# 本地校验生成的截图
-icons*.png
+# 鏈湴鏍￠獙鐢熸垚鐨勬埅鍥?icons*.png
+
+# Python 缓存
+__pycache__/
+*.pyc

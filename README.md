@@ -29,8 +29,9 @@
 | **一键撤回** | 改写后按钮变为「撤回」，点击恢复原文，再点又可优化 |
 | **多候选评估** | 可开启：并行生成 2–5 份结果，再由评审模型选出最优；会明确提示 token 成本 |
 | **模型来源可配置** | `跟随主程序`（默认）或 `自定义模型`（任意 OpenAI 兼容端点） |
-| **本地模型支持** | 由 Host 直接请求端点，不受浏览器 CORS 限制，Ollama / LM Studio / vLLM 均可 |
-| **按钮精简** | 可关闭按钮文字，仅显示图标（撤回时仍显示文字） |
+| **本地模型支持** | 由主机侧直接请求端点，不受浏览器 CORS 限制，Ollama / LM Studio / vLLM 均可 |
+| **显示提示文字** | 默认只显示图标；开启后同时显示「优化提示词」和「撤回」文字 |
+| **空输入引导** | 未填写内容时点击优化，提示语会逐字写入输入框，停留 5 秒后逐字删除；开始输入即自动停止 |
 | **引用保护** | 草稿含文件/会话引用芯片时自动禁用，避免改写丢失引用 |
 | **失败安全** | 草稿在请求期间被修改则不覆盖本次结果；请求可随页面关闭/切会话立即中止 |
 
@@ -45,16 +46,16 @@
 在 DSH 中打开「设置 → 插件」安装，或使用包坐标：
 
 ```text
-plugin_manager install_bundle target=dsh-promt-refine@1.0.0
+plugin_manager install_bundle target=dsh-promt-refine
 ```
 
 国内网络可指定镜像源：
 
 ```text
-plugin_manager install_bundle target=dsh-promt-refine@1.0.0 registry=https://registry.npmmirror.com
+plugin_manager install_bundle target=dsh-promt-refine registry=https://registry.npmmirror.com
 ```
 
-> 尚未发布到 npm registry 时，请使用下面的源码安装方式。
+需要固定版本时写完整版本号，例如 `target=dsh-promt-refine@1.1.0`。
 
 ### 方式二：源码安装
 
@@ -92,7 +93,7 @@ plugin_manager install_bundle target=<克隆目录的绝对路径>
 | 最大输出 token | 0 表示交给模型默认值 | 0 |
 | 优化指令 | 自定义 system prompt，留空用内置指令 | 内置 |
 | 多候选评估 | 开关 + 候选份数（2–5） | 关闭 / 1 份 |
-| 显示按钮文字 | 关闭后工具栏只显示图标 | 开启 |
+| 显示提示文字 | 开启后按钮显示「优化提示词」和「撤回」文字，关闭时只显示图标 | 关闭（仅图标） |
 
 可随时用「测试连接」验证当前配置；配置未保存到可调用状态时，保存仍会成功，但优化会返回可读的错误提示。
 
@@ -118,13 +119,13 @@ plugin_manager install_bundle target=<克隆目录的绝对路径>
 - **浏览器侧**：永远只能拿到掩码（如 `sk-••••1234`），任何接口都不返回明文。
 - **接口防护**：除 `/status` 外所有路由要求进程级随机票据（页面从 `/status` 获取）并校验 Origin；模型路由按来源限流 10 次/分钟。
 - **数据去向**：被优化的草稿文本会**发送给你配置的模型端点**（跟随模式即主程序所用 provider）。请勿在需要保密的草稿上使用不可信的第三方端点。
-- **请求中止**：页面关闭、切换会话或再次点击时立即中止在途请求，Host 返回 499 并停止计费。
+- **请求中止**：页面关闭、切换会话或再次点击时立即中止在途请求，主机侧返回 499 并停止计费。
 
 ---
 
 ## 实现说明
 
-### Host 半（`index.js`）
+### 主机侧（`index.js`）
 
 注册同源前缀路由 `/dsh-promt-refine/*`：
 
@@ -135,11 +136,11 @@ plugin_manager install_bundle target=<克隆目录的绝对路径>
 | `/optimize` | POST | 执行改写（含多候选评估） |
 | `/test` | POST | 测试连接 |
 
-- 跟随模式走 DSH `llm` 服务（自带账户鉴权与重试）；自定义模式由 Host 请求 OpenAI 兼容 `/chat/completions`
+- 跟随模式走 DSH `llm` 服务（自带账户鉴权与重试）；自定义模式由主机侧请求 OpenAI 兼容 `/chat/completions`
 - 评估：`candidates > 1` 时并行生成 N 份，再发一次只返回编号的评审请求；评审失败或无有效编号时退回确定性评分（结构 + 数字/标识符保留率 + 长度比）
 - 取消：`req.on('close')` 触发 AbortSignal，透传给 `llm.stream` / `fetch`
 
-### Client 半（`client.js`）
+### 客户端侧（`client.js`）
 
 以 `window.__ModuleLoader__.load` 注册两个 slot：
 
@@ -159,8 +160,19 @@ plugin_manager install_bundle target=<克隆目录的绝对路径>
 ```bash
 node --check index.js
 node --check client.js
-node .verify/host-test.mjs     # Host：路由、票据/限流、密钥存储、取消、多候选评估（44 项）
-node .verify/client-test.mjs   # Client：模块工厂与插槽注册（14 项）
+node .verify/host-test.mjs            # 主机侧：路由、票据/限流、密钥存储、取消、多候选评估（46 项）
+node .verify/client-test.mjs          # 客户端侧：模块工厂与插槽注册（14 项）
+node .verify/hint-animation-test.mjs  # 空输入提示动画：打字/停留/逐字删除与打断（31 项）
+node .verify/icon-test.mjs            # 图标结构约定（16 项）
+node .verify/locale-test.mjs          # 多语言解析与键一致性（36 项）
+node .verify/translate-sim.mjs        # 各语言实际输出（14 项）
+python3 .verify/icon-weight.py        # 真实 16px 渲染下的图标视觉平衡
+```
+
+或者一次跑完（与 CI 一致）：
+
+```bash
+npm run verify
 ```
 
 ### 提交代码

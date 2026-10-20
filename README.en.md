@@ -29,8 +29,9 @@ Natural-language requests are usually vague: no context, no scope, no acceptance
 | **One-click undo** | The button becomes *Undo*; click to restore the original, then optimize again |
 | **Multi-candidate evaluation** | Generate 2–5 drafts in parallel and let a judge model pick the best one; token cost is stated up front |
 | **Configurable model source** | *Follow the app* (default) or *Custom model* (any OpenAI-compatible endpoint) |
-| **Local models** | Requests are made by the Host, so browser CORS never blocks Ollama / LM Studio / vLLM |
-| **Compact button** | Hide the button label and show an icon only (Undo keeps its label) |
+| **Local models** | Requests are made by the host side, so browser CORS never blocks Ollama / LM Studio / vLLM |
+| **Show hint text** | Off by default (icon only); when on, both "Optimize prompt" and "Undo" labels are shown |
+| **Empty-draft guidance** | Clicking optimize on an empty draft types a hint into the composer, holds it for 5 seconds, then erases it character by character; typing cancels it immediately |
 | **Reference guard** | Disabled when the draft contains file/session reference chips, which a plain-text rewrite would drop |
 | **Failure-safe** | If the draft changes during the request the result is not applied; in-flight work aborts on page close or session switch |
 
@@ -45,16 +46,16 @@ The UI and dictionaries ship in **Chinese and English**.
 Open **Settings → Plugins** in DSH, or install by package coordinate:
 
 ```text
-plugin_manager install_bundle target=dsh-promt-refine@1.0.0
+plugin_manager install_bundle target=dsh-promt-refine
 ```
 
 For a faster registry inside mainland China:
 
 ```text
-plugin_manager install_bundle target=dsh-promt-refine@1.0.0 registry=https://registry.npmmirror.com
+plugin_manager install_bundle target=dsh-promt-refine registry=https://registry.npmmirror.com
 ```
 
-> Until the package is published to npm, use the source installation below.
+Pin an exact version when you need one, e.g. `target=dsh-promt-refine@1.1.0`.
 
 ### Option 2 — From source
 
@@ -92,7 +93,7 @@ After installation the plugin row appears under **Settings → Plugins**, and it
 | Max output tokens | 0 leaves it to the model default | 0 |
 | Refinement instruction | Custom system prompt; empty uses the built-in one | built-in |
 | Multi-candidate evaluation | Toggle plus candidate count (2–5) | off / 1 |
-| Show button label | When off the toolbar shows an icon only | on |
+| Show hint text | When on the control shows the "Optimize prompt" and "Undo" labels; when off it shows icons only | off (icon only) |
 
 Use **Test connection** to validate the current settings. Incomplete settings still save; the optimization call then returns a readable error instead of failing silently.
 
@@ -114,11 +115,11 @@ Use **Test connection** to validate the current settings. Incomplete settings st
 
 ## Privacy & security
 
-- **API key storage**: stored in the Host credential service when available (`keyStorage: credential`); `settings.json` only records whether a key exists. Without that service the key falls back to `$DSH_HOME/dsh-promt-refine/settings.json` with mode `0600`. Plaintext keys from older versions are migrated automatically and removed.
+- **API key storage**: stored in the host credential service when available (`keyStorage: credential`); `settings.json` only records whether a key exists. Without that service the key falls back to `$DSH_HOME/dsh-promt-refine/settings.json` with mode `0600`. Plaintext keys from older versions are migrated automatically and removed.
 - **Browser**: only ever receives a mask such as `sk-••••1234`; no route returns the plaintext.
 - **Endpoint protection**: every route except `/status` requires a per-process random ticket (fetched from `/status`) and validates `Origin`; model routes are rate limited to 10 calls/minute per source.
 - **Where data goes**: the draft text is **sent to the configured model endpoint** (the app's own provider in follow mode). Do not optimize sensitive drafts against an untrusted third-party endpoint.
-- **Cancellation**: closing the page, switching sessions, or clicking again aborts the request immediately; the Host answers 499 and stops the call.
+- **Cancellation**: closing the page, switching sessions, or clicking again aborts the request immediately; the host side answers 499 and stops the call.
 
 ---
 
@@ -159,8 +160,19 @@ Only `index.js`, `client.js`, `cordis.patch.yml`, `locale/*.json`, and `icon.svg
 ```bash
 node --check index.js
 node --check client.js
-node .verify/host-test.mjs     # Host: routes, ticket/rate limit, key storage, cancellation, evaluation (44 checks)
-node .verify/client-test.mjs   # Client: module factory and slot registrations (14 checks)
+node .verify/host-test.mjs            # Host: routes, ticket/rate limit, key storage, cancellation, evaluation (46 checks)
+node .verify/client-test.mjs          # Client: module factory and slot registrations (14 checks)
+node .verify/hint-animation-test.mjs  # Empty-draft guidance: type / hold / erase and interruption (31 checks)
+node .verify/icon-test.mjs            # Icon structure contract (16 checks)
+node .verify/locale-test.mjs          # Locale resolution and key parity (36 checks)
+node .verify/translate-sim.mjs        # Actual output per language (14 checks)
+python3 .verify/icon-weight.py        # Icon visual balance from a real 16px render
+```
+
+Or run everything CI runs:
+
+```bash
+npm run verify
 ```
 
 ### Committing
