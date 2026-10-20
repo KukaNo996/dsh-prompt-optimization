@@ -178,7 +178,7 @@ let response = await call(handler, 'GET', '/dsh-promt-refine/status')
 check('status 200 + ok', response.status === 200 && response.body.ok === true, response)
 check('status issues a request ticket', typeof response.body.ticket === 'string' && response.body.ticket.length >= 32, response.body)
 check('status reports account mode by default', response.body.mode === 'account', response.body)
-check('showLabel defaults to true', response.body.showLabel === true, response.body)
+check('showLabel defaults to false (icon only)', response.body.showLabel === false, response.body)
 
 // --- 1a. ticket and origin gates -------------------------------------------
 response = await call(handler, 'GET', '/dsh-promt-refine/settings', undefined, { 'x-dsh-promt-refine-ticket': '' })
@@ -189,6 +189,13 @@ response = await call(handler, 'POST', '/dsh-promt-refine/settings', { settings:
 check('cross-origin write rejected 403', response.status === 403, response)
 
 // --- 1b. label preference round-trips --------------------------------------
+// 默认关闭（仅图标）；开启后同时显示「优化提示词」和「撤回」文字。
+response = await call(handler, 'POST', '/dsh-promt-refine/settings', {
+  settings: { mode: 'account', provider: '', model: '', showLabel: true },
+})
+check('showLabel=true saved', response.status === 200 && response.body.showLabel === true, response)
+response = await call(handler, 'GET', '/dsh-promt-refine/settings')
+check('showLabel=true read back', response.body.showLabel === true, response.body)
 response = await call(handler, 'POST', '/dsh-promt-refine/settings', {
   settings: { mode: 'account', provider: '', model: '', showLabel: false },
 })

@@ -1,14 +1,14 @@
-# 依赖
+# 渚濊禆
 node_modules/
 .pnpm-store/
 
-# 构建产物
+# 鏋勫缓浜х墿
 dist/
 build/
 out/
 *.tgz
 
-# 日志
+# 鏃ュ織
 logs/
 *.log
 npm-debug.log*
@@ -16,13 +16,12 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# 本地环境与配置
-.env
+# 鏈湴鐜涓庨厤缃?.env
 .env.*
 *.local
 *.local.json
 
-# 编辑器与系统
+# 缂栬緫鍣ㄤ笌绯荤粺
 .vscode/
 .idea/
 .DS_Store
@@ -35,5 +34,8 @@ tmp/
 coverage/
 *.tsbuildinfo
 
-# 工具运行时的本地记忆文件
+# 宸ュ叿杩愯鏃剁殑鏈湴璁板繂鏂囦欢
 .workbuddy/
+
+# 本地校验生成的截图
+icons*.png

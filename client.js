@@ -26,267 +26,271 @@ window.__ModuleLoader__.load({
     // Dictionaries are generated from locale/*.json; edit the JSON, then run
     // `npm run build:locales`. Never edit this block by hand.
     const zhCN = {
-      "tool.optimize": "优化提示词",
-      "tool.undo": "撤回",
-      "tool.busy": "优化中…",
-      "tool.empty": "请先输入需要优化的提示词。",
-      "tool.failed": "优化失败：{message}",
-      "tool.draftChanged": "草稿在优化期间发生了变化，本次结果未应用。",
-      "tool.undoHint": "恢复优化前的提示词",
-      "tool.optimizeHint": "把当前输入改写为更专业、更清晰的提示词",
-      "tool.references": "草稿中包含文件或会话引用，优化会丢失这些引用，请先移除后再优化。",
-      "tool.referencesHint": "草稿含引用，暂不支持优化",
-      "settings.nav": "提示词优化",
-      "settings.title": "提示词优化",
-      "settings.description": "把输入框里的自然语言需求改写为任务明确、主旨清晰、无歧义、条理清晰、计划合理、目标准确的专业提示词。",
-      "settings.showLabel": "显示「优化提示词」文字",
-      "settings.showLabelHint": "关闭后按钮在输入框工具栏里只显示图标；撤回时仍显示「撤回」文字。",
-      "settings.evaluate": "多候选评估（更慢、更贵）",
-      "settings.evaluateHint": "开启后先生成多份优化结果，再由评审模型选出最好的一份，质量更稳定。",
-      "settings.evaluateCost": "注意：每次优化要调用模型 {count} 次生成 + 1 次评审，token 消耗约为单次的 {count2} 倍。",
+      "settings.apiKey": "API Key",
+      "settings.apiKeyHint": "仅保存在本机 DSH 数据目录，不会回传到浏览器。本地模型可留空。",
+      "settings.apiKeyPlaceholder": "sk-…",
+      "settings.apiKeyPlaceholderSaved": "已保存，留空保持不变",
+      "settings.apiKeySaved": "已保存：{masked}",
+      "settings.apiKeyUnset": "未保存",
+      "settings.baseURL": "API 地址",
+      "settings.baseURLHint": "OpenAI 兼容地址，末尾带 /v1；也可以直接填到 /chat/completions。",
+      "settings.baseURLPlaceholder": "例如 http://127.0.0.1:11434/v1",
       "settings.candidates": "候选份数",
       "settings.candidatesHint": "2–5 份。份数越多，耗时与 token 消耗越高。",
       "settings.candidatesOption": "{count} 份",
+      "settings.clearKey": "清除已保存的 Key",
+      "settings.description": "把输入框里的自然语言需求改写为任务明确、主旨清晰、无歧义、条理清晰、计划合理、目标准确的专业提示词。",
+      "settings.evaluate": "多候选评估（更慢、更贵）",
+      "settings.evaluateCost": "注意：每次优化要调用模型 {count} 次生成 + 1 次评审，token 消耗约为单次的 {count2} 倍。",
+      "settings.evaluateHint": "开启后先生成多份优化结果，再由评审模型选出最好的一份，质量更稳定。",
+      "settings.keyAbsent": "未配置 API Key",
+      "settings.keyPresent": "已配置 API Key",
+      "settings.loadFailed": "读取设置失败：{message}",
+      "settings.loading": "正在读取设置…",
+      "settings.maxTokens": "最大输出 token",
+      "settings.maxTokensHint": "0 表示不限制，交给模型默认值。",
       "settings.mode": "模型来源",
       "settings.modeAccount": "跟随主程序",
       "settings.modeAccountHint": "默认使用登录账户的 DeepSeek 模型；如果会话已选择模型，则优先使用该模型。",
       "settings.modeCustom": "自定义模型",
       "settings.modeCustomHint": "通过 OpenAI 兼容接口调用在线或本地模型（Ollama、LM Studio、vLLM、DeepSeek、OpenAI 等）。",
-      "settings.provider": "Provider（可选）",
-      "settings.providerHint": "留空则自动选择。填写时必须与模型名一起填写。",
-      "settings.providerPlaceholder": "例如 deepseek-account",
       "settings.model": "模型名称",
       "settings.modelHint": "跟随模式下可留空表示自动选择；自定义模式下必填。",
       "settings.modelPlaceholder": "例如 deepseek-flash",
-      "settings.baseURL": "API 地址",
-      "settings.baseURLHint": "OpenAI 兼容地址，末尾带 /v1；也可以直接填到 /chat/completions。",
-      "settings.baseURLPlaceholder": "例如 http://127.0.0.1:11434/v1",
-      "settings.apiKey": "API Key",
-      "settings.apiKeyHint": "仅保存在本机 DSH 数据目录，不会回传到浏览器。本地模型可留空。",
-      "settings.apiKeySaved": "已保存：{masked}",
-      "settings.apiKeyUnset": "未保存",
-      "settings.apiKeyPlaceholderSaved": "已保存，留空保持不变",
-      "settings.apiKeyPlaceholder": "sk-…",
-      "settings.clearKey": "清除已保存的 Key",
-      "settings.temperature": "温度",
-      "settings.temperatureHint": "0–2，越低越稳定。建议 0.2–0.4。",
-      "settings.maxTokens": "最大输出 token",
-      "settings.maxTokensHint": "0 表示不限制，交给模型默认值。",
-      "settings.systemPrompt": "优化指令（system prompt）",
-      "settings.systemPromptHint": "留空使用内置指令。高级用户可自定义改写要求。",
+      "settings.nav": "提示词优化",
+      "settings.provider": "Provider（可选）",
+      "settings.providerHint": "留空则自动选择。填写时必须与模型名一起填写。",
+      "settings.providerPlaceholder": "例如 deepseek-account",
+      "settings.requiredCustom": "自定义模式需要填写 API 地址与模型名称。",
       "settings.restoreDefault": "恢复默认指令",
       "settings.save": "保存设置",
-      "settings.saving": "保存中…",
-      "settings.test": "测试连接",
-      "settings.testing": "测试中…",
-      "settings.saved": "设置已保存。",
       "settings.saveFailed": "保存失败：{message}",
-      "settings.testOk": "连接成功 · {model} · {latency} ms",
-      "settings.testFailed": "连接失败：{message}",
-      "settings.loadFailed": "读取设置失败：{message}",
-      "settings.loading": "正在读取设置…",
+      "settings.saved": "设置已保存。",
+      "settings.saving": "保存中…",
+      "settings.showLabel": "显示提示文字",
+      "settings.showLabelHint": "开启后按钮显示「优化提示词」和「撤回」文字；关闭时只显示图标。默认关闭。",
       "settings.storageNote": "设置保存在本机，重启主程序后仍然有效。",
-      "settings.keyPresent": "已配置 API Key",
-      "settings.keyAbsent": "未配置 API Key",
-      "settings.requiredCustom": "自定义模式需要填写 API 地址与模型名称。",
+      "settings.systemPrompt": "优化指令（system prompt）",
+      "settings.systemPromptHint": "留空使用内置指令。高级用户可自定义改写要求。",
+      "settings.temperature": "温度",
+      "settings.temperatureHint": "0–2，越低越稳定。建议 0.2–0.4。",
+      "settings.test": "测试连接",
+      "settings.testFailed": "连接失败：{message}",
+      "settings.testOk": "连接成功 · {model} · {latency} ms",
+      "settings.testing": "测试中…",
+      "settings.title": "提示词优化",
+      "tool.busy": "优化中…",
+      "tool.draftChanged": "草稿在优化期间发生了变化，本次结果未应用。",
+      "tool.empty": "请先输入需要优化的提示词。",
+      "tool.failed": "优化失败：{message}",
+      "tool.hintType": "先写下你想完成的事情，例如：帮我给项目写一份使用说明。",
+      "tool.optimize": "优化提示词",
+      "tool.optimizeHint": "把当前输入改写为更专业、更清晰的提示词",
+      "tool.references": "草稿中包含文件或会话引用，优化会丢失这些引用，请先移除后再优化。",
+      "tool.referencesHint": "草稿含引用，暂不支持优化",
+      "tool.undo": "撤回",
+      "tool.undoHint": "恢复优化前的提示词",
     }
 
     const zhTW = {
-      "tool.optimize": "優化提示詞",
-      "tool.undo": "撤回",
-      "tool.busy": "優化中…",
-      "tool.empty": "請先輸入需要優化的提示詞。",
-      "tool.failed": "優化失敗：{message}",
-      "tool.draftChanged": "草稿在優化期間發生了變化，本次結果未套用。",
-      "tool.undoHint": "還原優化前的提示詞",
-      "tool.optimizeHint": "把目前輸入改寫為更專業、更清晰的提示詞",
-      "tool.references": "草稿中包含檔案或工作階段參照，優化會遺失這些參照，請先移除後再優化。",
-      "tool.referencesHint": "草稿含參照，暫不支援優化",
-      "settings.nav": "提示詞優化",
-      "settings.title": "提示詞優化",
-      "settings.description": "把輸入框中的自然語言需求改寫為任務明確、主旨清晰、無歧義、條理清晰、計劃合理、目標準確的專業提示詞。",
-      "settings.showLabel": "顯示「優化提示詞」文字",
-      "settings.showLabelHint": "關閉後按鈕在輸入框工具列中只顯示圖示；撤回時仍顯示「撤回」文字。",
-      "settings.evaluate": "多候選評估（較慢、較貴）",
-      "settings.evaluateHint": "開啟後先生成多份優化結果，再由評審模型選出最好的一份，品質更穩定。",
-      "settings.evaluateCost": "注意：每次優化要呼叫模型 {count} 次生成 + 1 次評審，token 消耗約為單次的 {count2} 倍。",
+      "settings.apiKey": "API Key",
+      "settings.apiKeyHint": "僅儲存在本機 DSH 資料目錄，不會回傳到瀏覽器。本機模型可留空。",
+      "settings.apiKeyPlaceholder": "sk-…",
+      "settings.apiKeyPlaceholderSaved": "已儲存，留空保持不變",
+      "settings.apiKeySaved": "已儲存：{masked}",
+      "settings.apiKeyUnset": "未儲存",
+      "settings.baseURL": "API 位址",
+      "settings.baseURLHint": "OpenAI 相容位址，結尾帶 /v1；也可以直接填到 /chat/completions。",
+      "settings.baseURLPlaceholder": "例如 http://127.0.0.1:11434/v1",
       "settings.candidates": "候選份數",
       "settings.candidatesHint": "2–5 份。份數越多，耗時與 token 消耗越高。",
       "settings.candidatesOption": "{count} 份",
+      "settings.clearKey": "清除已儲存的 Key",
+      "settings.description": "把輸入框中的自然語言需求改寫為任務明確、主旨清晰、無歧義、條理清晰、計劃合理、目標準確的專業提示詞。",
+      "settings.evaluate": "多候選評估（較慢、較貴）",
+      "settings.evaluateCost": "注意：每次優化要呼叫模型 {count} 次生成 + 1 次評審，token 消耗約為單次的 {count2} 倍。",
+      "settings.evaluateHint": "開啟後先生成多份優化結果，再由評審模型選出最好的一份，品質更穩定。",
+      "settings.keyAbsent": "未設定 API Key",
+      "settings.keyPresent": "已設定 API Key",
+      "settings.loadFailed": "讀取設定失敗：{message}",
+      "settings.loading": "正在讀取設定…",
+      "settings.maxTokens": "最大輸出 token",
+      "settings.maxTokensHint": "0 表示不限制，交給模型預設值。",
       "settings.mode": "模型來源",
       "settings.modeAccount": "跟隨主程式",
       "settings.modeAccountHint": "預設使用登入帳戶的 DeepSeek 模型；如果工作階段已選擇模型，則優先使用該模型。",
       "settings.modeCustom": "自訂模型",
       "settings.modeCustomHint": "透過 OpenAI 相容介面呼叫線上或本機模型（Ollama、LM Studio、vLLM、DeepSeek、OpenAI 等）。",
-      "settings.provider": "Provider（選填）",
-      "settings.providerHint": "留空則自動選擇。填寫時必須與模型名稱一起填寫。",
-      "settings.providerPlaceholder": "例如 deepseek-account",
       "settings.model": "模型名稱",
       "settings.modelHint": "跟隨模式下可留空表示自動選擇；自訂模式下必填。",
       "settings.modelPlaceholder": "例如 deepseek-flash",
-      "settings.baseURL": "API 位址",
-      "settings.baseURLHint": "OpenAI 相容位址，結尾帶 /v1；也可以直接填到 /chat/completions。",
-      "settings.baseURLPlaceholder": "例如 http://127.0.0.1:11434/v1",
-      "settings.apiKey": "API Key",
-      "settings.apiKeyHint": "僅儲存在本機 DSH 資料目錄，不會回傳到瀏覽器。本機模型可留空。",
-      "settings.apiKeySaved": "已儲存：{masked}",
-      "settings.apiKeyUnset": "未儲存",
-      "settings.apiKeyPlaceholderSaved": "已儲存，留空保持不變",
-      "settings.apiKeyPlaceholder": "sk-…",
-      "settings.clearKey": "清除已儲存的 Key",
-      "settings.temperature": "溫度",
-      "settings.temperatureHint": "0–2，越低越穩定。建議 0.2–0.4。",
-      "settings.maxTokens": "最大輸出 token",
-      "settings.maxTokensHint": "0 表示不限制，交給模型預設值。",
-      "settings.systemPrompt": "優化指令（system prompt）",
-      "settings.systemPromptHint": "留空使用內建指令。進階使用者可自訂改寫要求。",
+      "settings.nav": "提示詞優化",
+      "settings.provider": "Provider（選填）",
+      "settings.providerHint": "留空則自動選擇。填寫時必須與模型名稱一起填寫。",
+      "settings.providerPlaceholder": "例如 deepseek-account",
+      "settings.requiredCustom": "自訂模式需要填寫 API 位址與模型名稱。",
       "settings.restoreDefault": "還原預設指令",
       "settings.save": "儲存設定",
-      "settings.saving": "儲存中…",
-      "settings.test": "測試連線",
-      "settings.testing": "測試中…",
-      "settings.saved": "設定已儲存。",
       "settings.saveFailed": "儲存失敗：{message}",
-      "settings.testOk": "連線成功 · {model} · {latency} ms",
-      "settings.testFailed": "連線失敗：{message}",
-      "settings.loadFailed": "讀取設定失敗：{message}",
-      "settings.loading": "正在讀取設定…",
+      "settings.saved": "設定已儲存。",
+      "settings.saving": "儲存中…",
+      "settings.showLabel": "顯示提示文字",
+      "settings.showLabelHint": "開啟後按鈕顯示「優化提示詞」和「撤回」文字；關閉時只顯示圖示。預設關閉。",
       "settings.storageNote": "設定儲存在本機，重新啟動主程式後仍然有效。",
-      "settings.keyPresent": "已設定 API Key",
-      "settings.keyAbsent": "未設定 API Key",
-      "settings.requiredCustom": "自訂模式需要填寫 API 位址與模型名稱。",
+      "settings.systemPrompt": "優化指令（system prompt）",
+      "settings.systemPromptHint": "留空使用內建指令。進階使用者可自訂改寫要求。",
+      "settings.temperature": "溫度",
+      "settings.temperatureHint": "0–2，越低越穩定。建議 0.2–0.4。",
+      "settings.test": "測試連線",
+      "settings.testFailed": "連線失敗：{message}",
+      "settings.testOk": "連線成功 · {model} · {latency} ms",
+      "settings.testing": "測試中…",
+      "settings.title": "提示詞優化",
+      "tool.busy": "優化中…",
+      "tool.draftChanged": "草稿在優化期間發生了變化，本次結果未套用。",
+      "tool.empty": "請先輸入需要優化的提示詞。",
+      "tool.failed": "優化失敗：{message}",
+      "tool.hintType": "先寫下你想完成的事情，例如：幫我給專案寫一份使用說明。",
+      "tool.optimize": "優化提示詞",
+      "tool.optimizeHint": "把目前輸入改寫為更專業、更清晰的提示詞",
+      "tool.references": "草稿中包含檔案或工作階段參照，優化會遺失這些參照，請先移除後再優化。",
+      "tool.referencesHint": "草稿含參照，暫不支援優化",
+      "tool.undo": "撤回",
+      "tool.undoHint": "還原優化前的提示詞",
     }
 
     const ja = {
-      "tool.optimize": "プロンプトを最適化",
-      "tool.undo": "元に戻す",
-      "tool.busy": "最適化中…",
-      "tool.empty": "最適化するプロンプトを先に入力してください。",
-      "tool.failed": "最適化に失敗しました：{message}",
-      "tool.draftChanged": "最適化中に下書きが変更されたため、結果は適用されませんでした。",
-      "tool.undoHint": "最適化前のプロンプトに戻す",
-      "tool.optimizeHint": "現在の入力をより明確で専門的なプロンプトに書き換えます",
-      "tool.references": "下書きにファイルやセッションの参照が含まれています。書き換えると参照が失われるため、先に削除してください。",
-      "tool.referencesHint": "参照を含む下書きのため最適化できません",
-      "settings.nav": "プロンプト最適化",
-      "settings.title": "プロンプト最適化",
-      "settings.description": "コンポーザー内の曖昧な依頼を、タスクが明確で、主旨がはっきりし、曖昧さがなく、筋道立った計画と正確な目標を持つ専門プロンプトに書き換えます。",
-      "settings.showLabel": "「プロンプトを最適化」の文字を表示",
-      "settings.showLabelHint": "オフにするとツールバーはアイコンのみになります（元に戻すは文字を表示）。",
-      "settings.evaluate": "複数候補の評価（低速・高コスト）",
-      "settings.evaluateHint": "オンにすると複数の候補を生成し、審査モデルが最良のものを選びます。品質が安定します。",
-      "settings.evaluateCost": "注意：1 回の最適化で生成 {count} 回 + 審査 1 回のモデル呼び出しが発生し、トークン消費は単発の約 {count2} 倍になります。",
+      "settings.apiKey": "API キー",
+      "settings.apiKeyHint": "このマシンの DSH データディレクトリにのみ保存され、ブラウザには返りません。ローカルモデルでは空欄でも構いません。",
+      "settings.apiKeyPlaceholder": "sk-…",
+      "settings.apiKeyPlaceholderSaved": "保存済み（空欄なら変更しません）",
+      "settings.apiKeySaved": "保存済み：{masked}",
+      "settings.apiKeyUnset": "未設定",
+      "settings.baseURL": "API ベース URL",
+      "settings.baseURLHint": "OpenAI 互換のエンドポイント。/v1 で終わるのが一般的です。/chat/completions まで指定しても構いません。",
+      "settings.baseURLPlaceholder": "例：http://127.0.0.1:11434/v1",
       "settings.candidates": "候補数",
       "settings.candidatesHint": "2〜5 件。多いほど時間とトークンを消費します。",
       "settings.candidatesOption": "{count} 件",
+      "settings.clearKey": "保存したキーを削除",
+      "settings.description": "コンポーザー内の曖昧な依頼を、タスクが明確で、主旨がはっきりし、曖昧さがなく、筋道立った計画と正確な目標を持つ専門プロンプトに書き換えます。",
+      "settings.evaluate": "複数候補の評価（低速・高コスト）",
+      "settings.evaluateCost": "注意：1 回の最適化で生成 {count} 回 + 審査 1 回のモデル呼び出しが発生し、トークン消費は単発の約 {count2} 倍になります。",
+      "settings.evaluateHint": "オンにすると複数の候補を生成し、審査モデルが最良のものを選びます。品質が安定します。",
+      "settings.keyAbsent": "API キー未設定",
+      "settings.keyPresent": "API キー設定済み",
+      "settings.loadFailed": "設定を読み込めませんでした：{message}",
+      "settings.loading": "設定を読み込み中…",
+      "settings.maxTokens": "最大出力トークン",
+      "settings.maxTokensHint": "0 は無制限（モデルの既定値）です。",
       "settings.mode": "モデルの取得元",
       "settings.modeAccount": "アプリに従う",
       "settings.modeAccountHint": "既定ではサインイン中の DeepSeek モデルを使用します。セッションでモデルを選択している場合はそちらを優先します。",
       "settings.modeCustom": "カスタムモデル",
       "settings.modeCustomHint": "OpenAI 互換エンドポイントでオンラインまたはローカルモデルを呼び出します（Ollama、LM Studio、vLLM、DeepSeek、OpenAI など）。",
-      "settings.provider": "Provider（任意）",
-      "settings.providerHint": "空欄なら自動選択。モデル名と一緒に入力してください。",
-      "settings.providerPlaceholder": "例：deepseek-account",
       "settings.model": "モデル名",
       "settings.modelHint": "アプリ追従時は空欄で自動。カスタム時は必須です。",
       "settings.modelPlaceholder": "例：deepseek-flash",
-      "settings.baseURL": "API ベース URL",
-      "settings.baseURLHint": "OpenAI 互換のエンドポイント。/v1 で終わるのが一般的です。/chat/completions まで指定しても構いません。",
-      "settings.baseURLPlaceholder": "例：http://127.0.0.1:11434/v1",
-      "settings.apiKey": "API キー",
-      "settings.apiKeyHint": "このマシンの DSH データディレクトリにのみ保存され、ブラウザには返りません。ローカルモデルでは空欄でも構いません。",
-      "settings.apiKeySaved": "保存済み：{masked}",
-      "settings.apiKeyUnset": "未設定",
-      "settings.apiKeyPlaceholderSaved": "保存済み（空欄なら変更しません）",
-      "settings.apiKeyPlaceholder": "sk-…",
-      "settings.clearKey": "保存したキーを削除",
-      "settings.temperature": "温度",
-      "settings.temperatureHint": "0〜2。低いほど安定します。0.2〜0.4 が推奨です。",
-      "settings.maxTokens": "最大出力トークン",
-      "settings.maxTokensHint": "0 は無制限（モデルの既定値）です。",
-      "settings.systemPrompt": "最適化インストラクション（system prompt）",
-      "settings.systemPromptHint": "空欄なら組み込みの指示を使用します。",
+      "settings.nav": "プロンプト最適化",
+      "settings.provider": "Provider（任意）",
+      "settings.providerHint": "空欄なら自動選択。モデル名と一緒に入力してください。",
+      "settings.providerPlaceholder": "例：deepseek-account",
+      "settings.requiredCustom": "カスタムモードには API ベース URL とモデル名が必要です。",
       "settings.restoreDefault": "既定に戻す",
       "settings.save": "設定を保存",
-      "settings.saving": "保存中…",
-      "settings.test": "接続をテスト",
-      "settings.testing": "テスト中…",
-      "settings.saved": "設定を保存しました。",
       "settings.saveFailed": "保存に失敗しました：{message}",
-      "settings.testOk": "接続成功 · {model} · {latency} ms",
-      "settings.testFailed": "接続に失敗しました：{message}",
-      "settings.loadFailed": "設定を読み込めませんでした：{message}",
-      "settings.loading": "設定を読み込み中…",
+      "settings.saved": "設定を保存しました。",
+      "settings.saving": "保存中…",
+      "settings.showLabel": "ヒント文字を表示",
+      "settings.showLabelHint": "オンにすると「プロンプトを最適化」と「元に戻す」の文字が表示されます。オフのときはアイコンのみです。既定はオフ。",
       "settings.storageNote": "設定はこのマシンに保存され、再起動後も有効です。",
-      "settings.keyPresent": "API キー設定済み",
-      "settings.keyAbsent": "API キー未設定",
-      "settings.requiredCustom": "カスタムモードには API ベース URL とモデル名が必要です。",
+      "settings.systemPrompt": "最適化インストラクション（system prompt）",
+      "settings.systemPromptHint": "空欄なら組み込みの指示を使用します。",
+      "settings.temperature": "温度",
+      "settings.temperatureHint": "0〜2。低いほど安定します。0.2〜0.4 が推奨です。",
+      "settings.test": "接続をテスト",
+      "settings.testFailed": "接続に失敗しました：{message}",
+      "settings.testOk": "接続成功 · {model} · {latency} ms",
+      "settings.testing": "テスト中…",
+      "settings.title": "プロンプト最適化",
+      "tool.busy": "最適化中…",
+      "tool.draftChanged": "最適化中に下書きが変更されたため、結果は適用されませんでした。",
+      "tool.empty": "最適化するプロンプトを先に入力してください。",
+      "tool.failed": "最適化に失敗しました：{message}",
+      "tool.hintType": "まずやりたいことを書いてください。例：README を作成して。",
+      "tool.optimize": "プロンプトを最適化",
+      "tool.optimizeHint": "現在の入力をより明確で専門的なプロンプトに書き換えます",
+      "tool.references": "下書きにファイルやセッションの参照が含まれています。書き換えると参照が失われるため、先に削除してください。",
+      "tool.referencesHint": "参照を含む下書きのため最適化できません",
+      "tool.undo": "元に戻す",
+      "tool.undoHint": "最適化前のプロンプトに戻す",
     }
 
     const en = {
-      "tool.optimize": "Optimize prompt",
-      "tool.undo": "Undo",
-      "tool.busy": "Optimizing…",
-      "tool.empty": "Type the prompt you want to optimize first.",
-      "tool.failed": "Optimization failed: {message}",
-      "tool.draftChanged": "The draft changed while optimizing, so the result was not applied.",
-      "tool.undoHint": "Restore the prompt from before optimization",
-      "tool.optimizeHint": "Rewrite the current input as a clearer, more professional prompt",
-      "tool.references": "This draft contains file or session references that a rewrite would drop. Remove them first, then optimize.",
-      "tool.referencesHint": "Draft contains references; optimization is unavailable",
-      "settings.nav": "Prompt Refine",
-      "settings.title": "Prompt Refine",
-      "settings.description": "Rewrite a rough request in the composer into a professional prompt with a clear task, purpose, plan, and acceptance criteria.",
-      "settings.showLabel": "Show the \"Optimize prompt\" label",
-      "settings.showLabelHint": "When off, the toolbar control shows only an icon; the Undo action keeps its label.",
-      "settings.evaluate": "Multi-candidate evaluation (slower, costlier)",
-      "settings.evaluateHint": "When on, several drafts are generated and a judge model picks the best one, which makes quality more consistent.",
-      "settings.evaluateCost": "Note: each run costs {count} generation calls plus one judge call — roughly {count2}× the tokens of a single pass.",
+      "settings.apiKey": "API key",
+      "settings.apiKeyHint": "Stored only on this machine in the DSH data directory and never sent back to the browser. Local models may leave it empty.",
+      "settings.apiKeyPlaceholder": "sk-…",
+      "settings.apiKeyPlaceholderSaved": "Saved — leave empty to keep it",
+      "settings.apiKeySaved": "Saved: {masked}",
+      "settings.apiKeyUnset": "Not set",
+      "settings.baseURL": "API base URL",
+      "settings.baseURLHint": "OpenAI-compatible endpoint, usually ending in /v1; a full /chat/completions URL also works.",
+      "settings.baseURLPlaceholder": "e.g. http://127.0.0.1:11434/v1",
       "settings.candidates": "Candidates",
       "settings.candidatesHint": "2–5 drafts. More drafts mean more latency and token cost.",
       "settings.candidatesOption": "{count} drafts",
+      "settings.clearKey": "Clear the saved key",
+      "settings.description": "Rewrite a rough request in the composer into a professional prompt with a clear task, purpose, plan, and acceptance criteria.",
+      "settings.evaluate": "Multi-candidate evaluation (slower, costlier)",
+      "settings.evaluateCost": "Note: each run costs {count} generation calls plus one judge call — roughly {count2}× the tokens of a single pass.",
+      "settings.evaluateHint": "When on, several drafts are generated and a judge model picks the best one, which makes quality more consistent.",
+      "settings.keyAbsent": "No API key",
+      "settings.keyPresent": "API key configured",
+      "settings.loadFailed": "Could not load settings: {message}",
+      "settings.loading": "Loading settings…",
+      "settings.maxTokens": "Max output tokens",
+      "settings.maxTokensHint": "0 means unlimited (provider default).",
       "settings.mode": "Model source",
       "settings.modeAccount": "Follow the app",
       "settings.modeAccountHint": "Use the signed-in account DeepSeek model by default; the session-selected model wins when one is set.",
       "settings.modeCustom": "Custom model",
       "settings.modeCustomHint": "Call an online or local OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, DeepSeek, OpenAI, …).",
-      "settings.provider": "Provider (optional)",
-      "settings.providerHint": "Leave both fields empty to resolve automatically. Fill it together with the model.",
-      "settings.providerPlaceholder": "e.g. deepseek-account",
       "settings.model": "Model",
       "settings.modelHint": "Empty in follow mode means automatic; required in custom mode.",
       "settings.modelPlaceholder": "e.g. deepseek-flash",
-      "settings.baseURL": "API base URL",
-      "settings.baseURLHint": "OpenAI-compatible endpoint, usually ending in /v1; a full /chat/completions URL also works.",
-      "settings.baseURLPlaceholder": "e.g. http://127.0.0.1:11434/v1",
-      "settings.apiKey": "API key",
-      "settings.apiKeyHint": "Stored only on this machine in the DSH data directory and never sent back to the browser. Local models may leave it empty.",
-      "settings.apiKeySaved": "Saved: {masked}",
-      "settings.apiKeyUnset": "Not set",
-      "settings.apiKeyPlaceholderSaved": "Saved — leave empty to keep it",
-      "settings.apiKeyPlaceholder": "sk-…",
-      "settings.clearKey": "Clear the saved key",
-      "settings.temperature": "Temperature",
-      "settings.temperatureHint": "0–2; lower is steadier. 0.2–0.4 works well.",
-      "settings.maxTokens": "Max output tokens",
-      "settings.maxTokensHint": "0 means unlimited (provider default).",
-      "settings.systemPrompt": "Refinement instruction (system prompt)",
-      "settings.systemPromptHint": "Leave empty to use the built-in instruction.",
+      "settings.nav": "Prompt Refine",
+      "settings.provider": "Provider (optional)",
+      "settings.providerHint": "Leave both fields empty to resolve automatically. Fill it together with the model.",
+      "settings.providerPlaceholder": "e.g. deepseek-account",
+      "settings.requiredCustom": "Custom mode needs an API base URL and a model name.",
       "settings.restoreDefault": "Restore default",
       "settings.save": "Save settings",
-      "settings.saving": "Saving…",
-      "settings.test": "Test connection",
-      "settings.testing": "Testing…",
-      "settings.saved": "Settings saved.",
       "settings.saveFailed": "Save failed: {message}",
-      "settings.testOk": "Connected · {model} · {latency} ms",
-      "settings.testFailed": "Connection failed: {message}",
-      "settings.loadFailed": "Could not load settings: {message}",
-      "settings.loading": "Loading settings…",
+      "settings.saved": "Settings saved.",
+      "settings.saving": "Saving…",
+      "settings.showLabel": "Show hint text",
+      "settings.showLabelHint": "When on, the control shows the \"Optimize prompt\" and \"Undo\" labels; when off it shows icons only. Off by default.",
       "settings.storageNote": "Settings are stored on this machine and survive a restart.",
-      "settings.keyPresent": "API key configured",
-      "settings.keyAbsent": "No API key",
-      "settings.requiredCustom": "Custom mode needs an API base URL and a model name.",
+      "settings.systemPrompt": "Refinement instruction (system prompt)",
+      "settings.systemPromptHint": "Leave empty to use the built-in instruction.",
+      "settings.temperature": "Temperature",
+      "settings.temperatureHint": "0–2; lower is steadier. 0.2–0.4 works well.",
+      "settings.test": "Test connection",
+      "settings.testFailed": "Connection failed: {message}",
+      "settings.testOk": "Connected · {model} · {latency} ms",
+      "settings.testing": "Testing…",
+      "settings.title": "Prompt Refine",
+      "tool.busy": "Optimizing…",
+      "tool.draftChanged": "The draft changed while optimizing, so the result was not applied.",
+      "tool.empty": "Type the prompt you want to optimize first.",
+      "tool.failed": "Optimization failed: {message}",
+      "tool.hintType": "Type what you want done first — for example: write a README.",
+      "tool.optimize": "Optimize prompt",
+      "tool.optimizeHint": "Rewrite the current input as a clearer, more professional prompt",
+      "tool.references": "This draft contains file or session references that a rewrite would drop. Remove them first, then optimize.",
+      "tool.referencesHint": "Draft contains references; optimization is unavailable",
+      "tool.undo": "Undo",
+      "tool.undoHint": "Restore the prompt from before optimization",
     }
 
     // Every id the host may report for one dictionary. The host ships `zh`/`en`;
@@ -421,7 +425,7 @@ window.__ModuleLoader__.load({
     // Shared, page-local settings mirror (the toolbar and the settings page are
     // two components of this same module, so they can share plain module state).
     // ---------------------------------------------------------------------
-    const shared = { showLabel: true, loaded: false }
+    const shared = { showLabel: false, loaded: false }
     const sharedListeners = new Set()
 
     function publishShared(patch) {
@@ -450,7 +454,7 @@ window.__ModuleLoader__.load({
       request('/settings')
         .then((payload) => {
           if (!payload) return
-          publishShared({ showLabel: payload.showLabel !== false, loaded: true })
+          publishShared({ showLabel: payload.showLabel === true, loaded: true })
         })
         .catch(() => {})
     }
@@ -462,27 +466,35 @@ window.__ModuleLoader__.load({
     // previous 20x20 sparkle carried its visual mass above the geometric centre,
     // which made the toolbar glyph look vertically off in a 28px control.
     // ---------------------------------------------------------------------
+    /**
+     * Toolbar glyphs.
+     *
+     * IconUndo is the artwork supplied by the user, used verbatim on its own
+     * 1024 grid. IconSparkle is drawn on the same 1024 grid with the same
+     * two-part construction (one large mark plus one small satellite) so the two
+     * states carry a similar visual weight when the control swaps between them.
+     */
     function IconSparkle({ size }) {
       return h(
         'svg',
         {
-          viewBox: '0 0 16 16',
+          viewBox: '0 0 1024 1024',
           width: size || 16,
           height: size || 16,
           'aria-hidden': true,
           focusable: false,
-          style: { display: 'block', overflow: 'visible' },
+          style: { display: 'block' },
         },
-        // Large four-point star, centred on (8, 8).
+        // Large four-point star centred on (448, 528), sized to match the undo
+        // glyph's optical weight at 16px (measured by icon-weight.py).
         h('path', {
-          d: 'M8 1.6l1.45 3.4L12.85 6.45 9.45 7.9 8 11.3 6.55 7.9 3.15 6.45 6.55 5z',
+          d: 'M448 176l96 256 256 96-256 96-96 256-96-256-256-96 256-96z',
           fill: 'currentColor',
         }),
-        // Small satellite star, balanced into the upper-right negative space.
+        // Satellite star in the upper right.
         h('path', {
-          d: 'M12.6 10.4l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z',
+          d: 'M768 208l48 104 104 48-104 48-48 104-48-104-104-48 104-48z',
           fill: 'currentColor',
-          opacity: 0.75,
         }),
       )
     }
@@ -491,21 +503,23 @@ window.__ModuleLoader__.load({
       return h(
         'svg',
         {
-          viewBox: '0 0 16 16',
+          viewBox: '0 0 1024 1024',
+          version: '1.1',
+          xmlns: 'http://www.w3.org/2000/svg',
           width: size || 16,
           height: size || 16,
-          fill: 'none',
-          stroke: 'currentColor',
-          strokeWidth: 1.5,
-          strokeLinecap: 'round',
-          strokeLinejoin: 'round',
           'aria-hidden': true,
           focusable: false,
-          style: { display: 'block', overflow: 'visible' },
+          style: { display: 'block' },
         },
-        // Arrow head centred on the vertical middle of the arc.
-        h('path', { d: 'M3.6 8h6.9a3.3 3.3 0 010 6.6H7' }),
-        h('path', { d: 'M6.1 5.5L3.6 8l2.5 2.5' }),
+        h('path', {
+          d: 'M581.056 288.32H232.96l108.352-102.208c15.552-15.744 19.456-31.104 4.16-46.208-16.064-15.872-32.576-15.808-48.64 0l-145.92 144.768c-8.768 8.832-23.488 20.608-22.08 32.448l0.64 4.8-0.64 4.864c-1.344 11.776 6.4 18.24 14.848 26.816l147.648 145.216c16.064 15.808 38.08 20.992 54.144 5.12 15.296-15.104 3.84-38.208-11.328-53.504L233.152 353.6 581.056 352c126.464 0 250.944 111.488 250.944 236.16C832 712.832 707.52 832 581.056 832H246.4c-22.592 0-29.696 9.6-29.696 32.256s7.04 31.744 29.696 31.744H581.12C755.136 896 896 757.696 896 588.16c0-169.408-140.8-299.84-314.944-299.84z',
+          fill: 'currentColor',
+        }),
+        h('path', {
+          d: 'M323.392 192a32 32 0 1 1 0-64 32 32 0 0 1 0 64zM320.192 514.048a32 32 0 1 1 0-64 32 32 0 0 1 0 64zM237.824 896a32 32 0 1 1 0-64 32 32 0 0 1 0 64z',
+          fill: 'currentColor',
+        }),
       )
     }
 
@@ -578,6 +592,21 @@ window.__ModuleLoader__.load({
     // Composer toolbar control (conversation.input.right: immediately before
     // the model selector, inside the composer card's tool row).
     // ---------------------------------------------------------------------
+
+    /**
+     * Timing for the empty-draft hint animation (type -> hold -> erase).
+     *
+     * `HINT_CHUNK` characters are written per tick, so a ~30 character hint takes
+     * about a second to type — brisk enough to feel instant, slow enough to read as
+     * typed rather than pasted. The hold is the full 5 s the user asked for. The
+     * erase uses a smaller chunk and a slightly longer tick so the deletion is the
+     * part the eye can follow, instead of the text vanishing in one frame.
+     */
+    const HINT_CHUNK = 2
+    const HINT_TYPE_MS = 34
+    const HINT_HOLD_MS = 5000
+    const HINT_ERASE_CHUNK = 1
+    const HINT_ERASE_MS = 46
     const toolbarCss = `
 .dsh-pr-wrap { position: relative; display: inline-flex; align-items: center; align-self: center; flex: none; }
 /* Height matches the host's compact toolbar controls; the icon and the label are
@@ -589,9 +618,11 @@ window.__ModuleLoader__.load({
   font-size: var(--dsh-content-font-size-secondary, 13px); line-height: 1; white-space: nowrap; cursor: pointer;
   transition: background-color 120ms ease, color 120ms ease; }
 .dsh-pr-tool > svg { display: block; flex: none; }
-/* line-height:1 above makes the text box exactly one em tall, so the flex centring
-   is no longer thrown off by the 20px line box of the surrounding row. */
-.dsh-pr-tool > span { display: block; line-height: 1; }
+/* The glyph and the label share one baseline band. A line-height of 1 on the label
+   makes the text box exactly one em, and align-items: center then centres the icon
+   and the text on the same axis; without the explicit line-height the inherited
+   20px line box pushed the text about 1px below the icon. */
+.dsh-pr-tool > span { display: block; line-height: 1; padding-top: 0.5px; }
 .dsh-pr-tool[data-icon-only="true"] { width: 28px; padding: 0; }
 .dsh-pr-tool:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); }
 .dsh-pr-tool:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary, var(--dsw-alias-brand-primary))); outline-offset: 2px; }
@@ -642,11 +673,101 @@ window.__ModuleLoader__.load({
       draftRef.current = draft
       const mounted = React.useRef(true)
       const inflight = React.useRef(null)
+      /**
+       * Owner of the empty-draft hint animation (type -> hold -> erase).
+       *
+       * `timer` is the only pending step; `phase` records the current stage; `chars`
+       * is the full hint text. All of it is plain mutable state because the run loop
+       * fires every few dozen milliseconds and must not re-render the composer.
+       * `run` is compared by identity so a cancelled run cannot be revived by a
+       * timer that was already queued when the cancellation happened.
+       */
+      const hintRun = React.useRef({ timer: null, phase: 'idle', chars: [], index: 0 })
 
       const abortInflight = () => {
         const controller = inflight.current
         inflight.current = null
         if (controller) controller.abort()
+      }
+
+      /**
+       * Stop the hint animation. By default it also clears any half-typed text the
+       * animation itself produced, but leaves text the user typed in the meantime.
+       */
+      const cancelHintAnimation = (options) => {
+        const run = hintRun.current
+        if (run.timer !== null) {
+          clearTimeout(run.timer)
+          run.timer = null
+        }
+        const wasAnimating = run.phase !== 'idle'
+        const owned = run.chars.slice(0, run.index).join('')
+        run.phase = 'idle'
+        run.chars = []
+        run.index = 0
+        if (wasAnimating && !options?.keepText && mounted.current) {
+          const current = draftRef.current
+          if (owned && current === owned) inputActions.setDraft('')
+        }
+      }
+
+      /**
+       * Type a hint into the composer, hold it, then erase it character by
+       * character.
+       *
+       * The text goes through `inputActions.setDraft`, never the DOM, so the host's
+       * own persistence and undo see ordinary edits. Characters are written and
+       * removed a few at a time: one `setDraft` per character would make a long
+       * localized hint crawl, and a single write would look pasted rather than
+       * typed. Timing is deliberately unhurried on the way out — the erase is the
+       * part the eye follows — while typing stays brisk enough to feel responsive.
+       */
+      const startHintAnimation = (text) => {
+        cancelHintAnimation({ keepText: true })
+        const run = { timer: null, phase: 'typing', chars: [...text], index: 0 }
+        hintRun.current = run
+
+        // The hint is typed into the composer, so an empty string has nothing to
+        // show; the button simply does nothing rather than falling back to a bubble.
+        if (!run.chars.length) {
+          run.phase = 'idle'
+          return
+        }
+
+        const step = () => {
+          if (!mounted.current || hintRun.current !== run) return
+          if (run.phase === 'typing') {
+            run.index = Math.min(run.chars.length, run.index + HINT_CHUNK)
+            inputActions.setDraft(run.chars.slice(0, run.index).join(''))
+            if (run.index >= run.chars.length) {
+              // Fully typed: hold so the hint can actually be read.
+              run.phase = 'holding'
+              run.timer = setTimeout(() => {
+                if (!mounted.current || hintRun.current !== run) return
+                run.phase = 'erasing'
+                step()
+              }, HINT_HOLD_MS)
+            } else {
+              run.timer = setTimeout(step, HINT_TYPE_MS)
+            }
+            return
+          }
+          if (run.phase === 'erasing') {
+            run.index = Math.max(0, run.index - HINT_ERASE_CHUNK)
+            inputActions.setDraft(run.chars.slice(0, run.index).join(''))
+            if (run.index <= 0) {
+              run.phase = 'idle'
+              run.timer = null
+              run.chars = []
+              // Animation done: the composer is empty again and no bubble is shown.
+              // The hint lives in the draft, so nothing further is needed here.
+            } else {
+              run.timer = setTimeout(step, HINT_ERASE_MS)
+            }
+          }
+        }
+
+        run.timer = setTimeout(step, HINT_TYPE_MS)
       }
 
       React.useEffect(() => {
@@ -655,11 +776,16 @@ window.__ModuleLoader__.load({
         return () => {
           mounted.current = false
           abortInflight()
+          const run = hintRun.current
+          if (run.timer !== null) clearTimeout(run.timer)
+          run.timer = null
+          run.phase = 'idle'
         }
       }, [])
 
       React.useEffect(() => {
         abortInflight()
+        cancelHintAnimation()
         setBusy(false)
         setOriginal(null)
         setRefined(null)
@@ -677,6 +803,18 @@ window.__ModuleLoader__.load({
         }
       }, [draft, refined])
 
+      // Typing while the hint is playing cancels it at once. The animation is
+      // guidance; the moment the user starts writing for real it must stop rather
+      // than keep overwriting their text. The comparison against the exact prefix
+      // the animation owns is what keeps our own per-tick writes from cancelling it.
+      React.useEffect(() => {
+        const run = hintRun.current
+        if (run.phase === 'idle') return
+        const owned = run.chars.slice(0, run.index).join('')
+        if (draft === owned) return
+        cancelHintAnimation()
+      }, [draft])
+
       React.useEffect(() => {
         if (message === null) return
         const timer = setTimeout(() => setMessage(null), message.level === 'error' ? 9000 : 4000)
@@ -691,7 +829,8 @@ window.__ModuleLoader__.load({
         }
         const source = draft
         if (!source.trim()) {
-          setMessage({ level: 'error', text: t('tool.empty') })
+          // Empty draft: play the hint inside the composer instead of only a bubble.
+          startHintAnimation(t('tool.hintType'))
           return
         }
         abortInflight()
@@ -723,6 +862,7 @@ window.__ModuleLoader__.load({
 
       const undo = () => {
         abortInflight()
+        cancelHintAnimation()
         if (original === null) return
         inputActions.setDraft(original)
         setOriginal(null)
@@ -735,8 +875,9 @@ window.__ModuleLoader__.load({
       // Undo stays available even while the composer is busy, so a mistaken
       // optimization can always be reverted.
       const disabled = isRefined ? false : busy || locked || hasReferences
-      const showIdleLabel = preferences.showLabel !== false
-      const showText = isRefined ? true : showIdleLabel
+      // The preference drives both states: when it is off the control shows an
+      // icon only, in the optimized state too, so it never changes width.
+      const showText = preferences.showLabel === true
       const title = isRefined ? t('tool.undoHint') : hasReferences ? t('tool.referencesHint') : t('tool.optimizeHint')
       const label = busy ? t('tool.busy') : isRefined ? t('tool.undo') : t('tool.optimize')
 
@@ -848,7 +989,7 @@ window.__ModuleLoader__.load({
         temperature: String(settings.temperature ?? 0.3),
         maxTokens: String(settings.maxTokens ?? 0),
         systemPrompt: settings.systemPrompt || '',
-        showLabel: settings.showLabel !== false,
+        showLabel: settings.showLabel === true,
         evaluate: candidates > 1,
         candidates: String(candidates > 1 ? candidates : 3),
       }
@@ -885,7 +1026,7 @@ window.__ModuleLoader__.load({
             setHasKey(Boolean(payload.hasApiKey))
             setKeyMasked(payload.apiKeyMasked || '')
             if (payload.defaults && payload.defaults.systemPrompt) setDefaultInstruction(payload.defaults.systemPrompt)
-            publishShared({ showLabel: payload.showLabel !== false, loaded: true })
+            publishShared({ showLabel: payload.showLabel === true, loaded: true })
             setLoading(false)
           })
           .catch((error) => {
@@ -934,7 +1075,7 @@ window.__ModuleLoader__.load({
           setHasKey(Boolean(payload.hasApiKey))
           setKeyMasked(payload.apiKeyMasked || '')
           setClearKey(false)
-          publishShared({ showLabel: payload.showLabel !== false, loaded: true })
+          publishShared({ showLabel: payload.showLabel === true, loaded: true })
           setStatus({ tone: 'ok', text: t('settings.saved') })
         } catch (error) {
           if (mounted.current) setStatus({ tone: 'error', text: t('settings.saveFailed', { message: errorMessage(error) }) })

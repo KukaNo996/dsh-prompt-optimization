@@ -48,8 +48,18 @@ jobs:
       - name: Client half tests
         run: node .verify/client-test.mjs
 
+      - name: Empty-draft hint animation
+        run: node .verify/hint-animation-test.mjs
+
       - name: Localization tests
         run: node .verify/locale-test.mjs
+
+      # The optimize and undo glyphs must keep the same optical centre, height and
+      # ink weight: swapping the control's state must not shift the label baseline.
+      - name: Icon geometry
+        run: |
+          node .verify/icon-test.mjs
+          python3 .verify/icon-weight.py
 
       - name: Pack contents assertion
         run: |

@@ -56,7 +56,8 @@ const DEFAULT_SETTINGS = Object.freeze({
   temperature: 0.3,
   maxTokens: 0,
   systemPrompt: '',
-  showLabel: true,
+  // 默认关闭：工具栏只显示图标；开启后才显示文字。
+  showLabel: false,
   candidates: 1,
 })
 
@@ -157,7 +158,7 @@ function normalizeSettings(raw, current) {
     temperature,
     maxTokens,
     systemPrompt: asString(input.systemPrompt, base.systemPrompt),
-    showLabel: typeof input.showLabel === 'boolean' ? input.showLabel : base.showLabel !== false,
+    showLabel: typeof input.showLabel === 'boolean' ? input.showLabel : base.showLabel === true,
     candidates,
   }
 }
@@ -792,7 +793,7 @@ function handleStatus(ctx, res, ticketValue) {
       hasApiKey: Boolean(key),
       keyStorage: keyStorageOf(ctx, settings, key),
       model: settings.mode === 'custom' ? settings.model : settings.model || '(auto)',
-      showLabel: settings.showLabel !== false,
+      showLabel: settings.showLabel === true,
     })
   })
 }
