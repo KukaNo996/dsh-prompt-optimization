@@ -28,7 +28,7 @@ Natural-language requests are usually vague: no context, no scope, no acceptance
 | **One-click optimize** | Calls the model and writes the rewritten prompt back into the draft |
 | **One-click undo** | The button becomes *Undo*; click to restore the original, then optimize again |
 | **Multi-candidate evaluation** | Generate 2–5 drafts in parallel and let a judge model pick the best one; token cost is stated up front |
-| **Configurable model source** | *Follow the app* (default) or *Custom model* (any OpenAI-compatible endpoint) |
+| **Configurable model source** | *Follow composer* (default), *Follow the app* or *Custom model* (any OpenAI-compatible endpoint) |
 | **Local models** | Requests are made by the host side, so browser CORS never blocks Ollama / LM Studio / vLLM |
 | **Show hint text** | Off by default (icon only); when on, both "Optimize prompt" and "Undo" labels are shown |
 | **Empty-draft guidance** | Clicking optimize on an empty draft types a hint into the composer, holds it for 5 seconds, then erases it character by character; typing cancels it immediately |
@@ -85,7 +85,7 @@ After installation the plugin row appears under **Settings → Plugins**, and it
 
 | Setting | Purpose | Default |
 | --- | --- | --- |
-| Model source | *Follow the app* or *Custom model* | Follow the app |
+| Model source | *Follow composer*, *Follow the app* or *Custom model* | Follow composer |
 | API base URL | OpenAI-compatible endpoint in custom mode, e.g. `http://127.0.0.1:11434/v1` | — |
 | Model | Required in custom mode; empty in follow mode means automatic | — |
 | Provider (optional) | Overrides the auto-resolved provider in follow mode | automatic |
@@ -117,7 +117,19 @@ When left empty the check tries **npm registry → npmmirror → GitHub Releases
 - Each source times out after 10 seconds and the check falls back to the next one; if all fail, every reason is listed.
 - Version comparison follows semver precedence, including prerelease ordering.
 
-### Model resolution (follow mode)
+### The three model sources
+
+| Mode | Model used | When it is unavailable |
+| --- | --- | --- |
+| **Follow composer** (default) | The model currently picked at the bottom right of the input box | **Fails**; it never switches to another model |
+| Follow the app | See the resolution order below | Falls back step by step |
+| Custom model | The OpenAI-compatible endpoint you configured | Fails with a hint about the missing URL or model |
+
+'Follow composer' **never falls back**: picking it means you want the optimization to run on
+the very model you are talking to, so swapping in another one silently would defeat the point.
+When the session has no recognisable selection yet, the plugin says so instead of deciding for you.
+
+### Model resolution (follow the app)
 
 1. Provider + model explicitly set on the settings page
 2. The model used by the session's most recent request (i.e. the model selector)

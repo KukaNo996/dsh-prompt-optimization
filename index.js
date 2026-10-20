@@ -48,7 +48,8 @@ const JUDGE_INSTRUCTION = [
 ].join('\n')
 
 const DEFAULT_SETTINGS = Object.freeze({
-  mode: 'account',
+  // 跟随输入框：默认就用用户当前正在对话的那个模型，最符合直觉。
+  mode: 'composer',
   provider: '',
   model: '',
   baseURL: '',
@@ -479,7 +480,20 @@ function asString(value, fallback) {
 function normalizeSettings(raw, current) {
   const base = { ...DEFAULT_SETTINGS, ...(current || {}) }
   const input = raw && typeof raw === 'object' ? raw : {}
-  const mode = input.mode === 'custom' ? 'custom' : input.mode === 'account' ? 'account' : base.mode
+  // Three model sources:
+  //   composer - exactly the model picked in the composer, never falling back
+  //   account  - session model, then the app default, then the account default
+  //   custom   - any OpenAI-compatible endpoint
+  //
+  // An unrecognised value falls back to the saved mode only when that one is
+  // itself valid; a settings file written by a newer or corrupted build must
+  // not pin the plugin to a mode the UI cannot represent.
+  const KNOWN_MODES = ['composer', 'account', 'custom']
+  const mode = KNOWN_MODES.includes(input.mode)
+    ? input.mode
+    : KNOWN_MODES.includes(base.mode)
+      ? base.mode
+      : 'composer'
   const temperatureRaw = Number(input.temperature ?? base.temperature)
   const temperature = Number.isFinite(temperatureRaw) ? Math.min(2, Math.max(0, temperatureRaw)) : DEFAULT_SETTINGS.temperature
   const maxTokensRaw = Math.floor(Number(input.maxTokens ?? base.maxTokens))
@@ -792,7 +806,9 @@ async function latestSessionSelection(ctx, sessionId) {
   return undefined
 }
 
-/** Resolve the account-mode model: explicit override, then session, then default, then account fallback. */
+/**
+ * Resolve the account-mode model: explicit override, then session, then default, then account fallback.
+ */
 async function resolveAccountSelection(ctx, settings, sessionId) {
   if (settings.provider && settings.model) {
     return { provider: settings.provider, model: settings.model, source: 'settings' }
@@ -811,13 +827,44 @@ async function resolveAccountSelection(ctx, settings, sessionId) {
   return { provider: 'deepseek-account', model: 'deepseek-flash', source: 'account-fallback' }
 }
 
+/**
+ * Resolve the model chosen in the composer (the selector at the bottom right of
+ * the input box).
+ *
+ * Unlike "follow the app", this mode never falls back: the user picked this
+ * mode precisely to have the optimization run on the very model they are
+ * talking to. Silently substituting another model would contradict that
+ * intent, so an unknown selection is reported instead.
+ */
+async function resolveComposerSelection(ctx, sessionId) {
+  if (!sessionId) {
+    throw new HttpError(
+      400,
+      'composer_model_unknown',
+      '无法确定输入框选择的模型：当前会话不可用。请切换到「跟随主程序」或「自定义模型」。',
+    )
+  }
+  const selection = await latestSessionSelection(ctx, sessionId)
+  if (!selection) {
+    throw new HttpError(
+      400,
+      'composer_model_unknown',
+      '还没有找到输入框选择的模型。请先在输入框右下角选择一个模型并发送一条消息，或改用「跟随主程序」。',
+    )
+  }
+  return selection
+}
+
 /** Call the logged-in account / default route through the Host LLM service. */
 async function callAccountModel(ctx, settings, instruction, userText, timeoutMs, sessionId, signal) {
   const llm = ctx.get('llm')
   if (!llm) {
     throw new HttpError(503, 'llm_unavailable', '主程序的 LLM 服务不可用，请在设置页改用自定义模型。')
   }
-  const selection = await resolveAccountSelection(ctx, settings, sessionId)
+  const selection =
+    settings.mode === 'composer'
+      ? await resolveComposerSelection(ctx, sessionId)
+      : await resolveAccountSelection(ctx, settings, sessionId)
   if (signal?.aborted) throw new HttpError(499, 'aborted', '请求已取消。')
   const guard = timeoutSignal(signal, timeoutMs)
   let output = ''

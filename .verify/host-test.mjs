@@ -178,7 +178,7 @@ check('route mounted with prefix kind', ctx.get('__route').kind === 'prefix' && 
 let response = await call(handler, 'GET', '/dsh-prompt-optimization/status')
 check('status 200 + ok', response.status === 200 && response.body.ok === true, response)
 check('status issues a request ticket', typeof response.body.ticket === 'string' && response.body.ticket.length >= 32, response.body)
-check('status reports account mode by default', response.body.mode === 'account', response.body)
+check('status reports composer mode by default', response.body.mode === 'composer', response.body)
 check('showLabel defaults to false (icon only)', response.body.showLabel === false, response.body)
 
 // --- 1a. ticket and origin gates -------------------------------------------

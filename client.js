@@ -39,6 +39,7 @@ window.__ModuleLoader__.load({
       "settings.candidatesHint": "2–5 份。份数越多，耗时与 token 消耗越高。",
       "settings.candidatesOption": "{count} 份",
       "settings.clearKey": "清除已保存的 Key",
+      "settings.composerNote": "此模式下由输入框右下角的选择决定模型，无需填写模型名称。",
       "settings.description": "把输入框里的自然语言需求改写为任务明确、主旨清晰、无歧义、条理清晰、计划合理、目标准确的专业提示词。",
       "settings.evaluate": "多候选评估（更慢、更贵）",
       "settings.evaluateCost": "注意：每次优化要调用模型 {count} 次生成 + 1 次评审，token 消耗约为单次的 {count2} 倍。",
@@ -52,6 +53,8 @@ window.__ModuleLoader__.load({
       "settings.mode": "模型来源",
       "settings.modeAccount": "跟随主程序",
       "settings.modeAccountHint": "默认使用登录账户的 DeepSeek 模型；如果会话已选择模型，则优先使用该模型。",
+      "settings.modeComposer": "跟随输入框",
+      "settings.modeComposerHint": "使用输入框右下角当前选择的模型来优化提示词，不会自动改用其他模型。",
       "settings.modeCustom": "自定义模型",
       "settings.modeCustomHint": "通过 OpenAI 兼容接口调用在线或本地模型（Ollama、LM Studio、vLLM、DeepSeek、OpenAI 等）。",
       "settings.model": "模型名称",
@@ -120,6 +123,7 @@ window.__ModuleLoader__.load({
       "settings.candidatesHint": "2–5 份。份數越多，耗時與 token 消耗越高。",
       "settings.candidatesOption": "{count} 份",
       "settings.clearKey": "清除已儲存的 Key",
+      "settings.composerNote": "此模式下由輸入框右下角的選擇決定模型，無需填寫模型名稱。",
       "settings.description": "把輸入框中的自然語言需求改寫為任務明確、主旨清晰、無歧義、條理清晰、計劃合理、目標準確的專業提示詞。",
       "settings.evaluate": "多候選評估（較慢、較貴）",
       "settings.evaluateCost": "注意：每次優化要呼叫模型 {count} 次生成 + 1 次評審，token 消耗約為單次的 {count2} 倍。",
@@ -133,6 +137,8 @@ window.__ModuleLoader__.load({
       "settings.mode": "模型來源",
       "settings.modeAccount": "跟隨主程式",
       "settings.modeAccountHint": "預設使用登入帳戶的 DeepSeek 模型；如果工作階段已選擇模型，則優先使用該模型。",
+      "settings.modeComposer": "跟隨輸入框",
+      "settings.modeComposerHint": "使用輸入框右下角目前選擇的模型來優化提示詞，不會自動改用其他模型。",
       "settings.modeCustom": "自訂模型",
       "settings.modeCustomHint": "透過 OpenAI 相容介面呼叫線上或本機模型（Ollama、LM Studio、vLLM、DeepSeek、OpenAI 等）。",
       "settings.model": "模型名稱",
@@ -201,6 +207,7 @@ window.__ModuleLoader__.load({
       "settings.candidatesHint": "2〜5 件。多いほど時間とトークンを消費します。",
       "settings.candidatesOption": "{count} 件",
       "settings.clearKey": "保存したキーを削除",
+      "settings.composerNote": "このモードでは入力枠の右下角の選択でモデルが決まります。モデル名を入力する必要はありません。",
       "settings.description": "コンポーザー内の曖昧な依頼を、タスクが明確で、主旨がはっきりし、曖昧さがなく、筋道立った計画と正確な目標を持つ専門プロンプトに書き換えます。",
       "settings.evaluate": "複数候補の評価（低速・高コスト）",
       "settings.evaluateCost": "注意：1 回の最適化で生成 {count} 回 + 審査 1 回のモデル呼び出しが発生し、トークン消費は単発の約 {count2} 倍になります。",
@@ -214,6 +221,8 @@ window.__ModuleLoader__.load({
       "settings.mode": "モデルの取得元",
       "settings.modeAccount": "アプリに従う",
       "settings.modeAccountHint": "既定ではサインイン中の DeepSeek モデルを使用します。セッションでモデルを選択している場合はそちらを優先します。",
+      "settings.modeComposer": "入力枠に従う",
+      "settings.modeComposerHint": "入力枠の右下角で現在選択されているモデルでプロンプトを最適化します。他のモデルに自動的に切り替わりません。",
       "settings.modeCustom": "カスタムモデル",
       "settings.modeCustomHint": "OpenAI 互換エンドポイントでオンラインまたはローカルモデルを呼び出します（Ollama、LM Studio、vLLM、DeepSeek、OpenAI など）。",
       "settings.model": "モデル名",
@@ -282,6 +291,7 @@ window.__ModuleLoader__.load({
       "settings.candidatesHint": "2–5 drafts. More drafts mean more latency and token cost.",
       "settings.candidatesOption": "{count} drafts",
       "settings.clearKey": "Clear the saved key",
+      "settings.composerNote": "In this mode the model comes from the composer selection, so there is no model name to fill in.",
       "settings.description": "Rewrite a rough request in the composer into a professional prompt with a clear task, purpose, plan, and acceptance criteria.",
       "settings.evaluate": "Multi-candidate evaluation (slower, costlier)",
       "settings.evaluateCost": "Note: each run costs {count} generation calls plus one judge call — roughly {count2}× the tokens of a single pass.",
@@ -295,6 +305,8 @@ window.__ModuleLoader__.load({
       "settings.mode": "Model source",
       "settings.modeAccount": "Follow the app",
       "settings.modeAccountHint": "Use the signed-in account DeepSeek model by default; the session-selected model wins when one is set.",
+      "settings.modeComposer": "Follow composer",
+      "settings.modeComposerHint": "Optimize with the model currently picked in the composer; it never silently switches to another one.",
       "settings.modeCustom": "Custom model",
       "settings.modeCustomHint": "Call an online or local OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, DeepSeek, OpenAI, …).",
       "settings.model": "Model",
@@ -1027,7 +1039,7 @@ window.__ModuleLoader__.load({
 `
 
     const EMPTY_FORM = {
-      mode: 'account',
+      mode: 'composer',
       provider: '',
       model: '',
       baseURL: '',
@@ -1043,8 +1055,11 @@ window.__ModuleLoader__.load({
 
     function toForm(settings) {
       const candidates = Math.min(5, Math.max(1, Math.floor(Number(settings.candidates) || 1)))
+      // Older settings only knew "account" and "custom"; anything else that the
+      // Host did not recognise falls back to the composer mode.
+      const mode = settings.mode === 'custom' ? 'custom' : settings.mode === 'account' ? 'account' : 'composer'
       return {
-        mode: settings.mode === 'custom' ? 'custom' : 'account',
+        mode,
         provider: settings.provider || '',
         model: settings.model || '',
         baseURL: settings.baseURL || '',
@@ -1205,6 +1220,10 @@ window.__ModuleLoader__.load({
       }
 
       const custom = form.mode === 'custom'
+      // The mode cards each carry their own hint; the row header shows the one
+      // belonging to the currently selected card.
+      const mode = form.mode === 'custom' ? 'custom' : form.mode === 'account' ? 'account' : 'composer'
+      const modeLabelKey = mode === 'custom' ? 'Custom' : mode === 'account' ? 'Account' : 'Composer'
       return h(
         'div',
         { className: 'dsh-pr-settings' },
@@ -1303,7 +1322,7 @@ window.__ModuleLoader__.load({
             'div',
             { style: { flex: '1 1 auto', minWidth: 0 } },
             h('div', { className: 'dsh-pr-row-title' }, t('settings.mode')),
-            h('div', { className: 'dsh-pr-row-desc' }, custom ? t('settings.modeCustomHint') : t('settings.modeAccountHint')),
+            h('div', { className: 'dsh-pr-row-desc' }, t(`settings.mode${modeLabelKey}Hint`)),
           ),
           h(
             'div',
@@ -1313,12 +1332,29 @@ window.__ModuleLoader__.load({
               { className: 'dsh-pr-modes', role: 'radiogroup', 'aria-label': t('settings.mode') },
               h(
                 'label',
-                { className: 'dsh-pr-mode', 'data-active': custom ? 'false' : 'true' },
+                { className: 'dsh-pr-mode', 'data-active': mode === 'composer' ? 'true' : 'false' },
+                h('input', {
+                  type: 'radio',
+                  name: 'dsh-pr-mode',
+                  value: 'composer',
+                  checked: mode === 'composer',
+                  onChange: () => update('mode', 'composer'),
+                }),
+                h(
+                  'span',
+                  null,
+                  h('div', { className: 'dsh-pr-mode-title' }, t('settings.modeComposer')),
+                  h('div', { className: 'dsh-pr-mode-desc' }, t('settings.modeComposerHint')),
+                ),
+              ),
+              h(
+                'label',
+                { className: 'dsh-pr-mode', 'data-active': mode === 'account' ? 'true' : 'false' },
                 h('input', {
                   type: 'radio',
                   name: 'dsh-pr-mode',
                   value: 'account',
-                  checked: !custom,
+                  checked: mode === 'account',
                   onChange: () => update('mode', 'account'),
                 }),
                 h(
@@ -1330,12 +1366,12 @@ window.__ModuleLoader__.load({
               ),
               h(
                 'label',
-                { className: 'dsh-pr-mode', 'data-active': custom ? 'true' : 'false' },
+                { className: 'dsh-pr-mode', 'data-active': mode === 'custom' ? 'true' : 'false' },
                 h('input', {
                   type: 'radio',
                   name: 'dsh-pr-mode',
                   value: 'custom',
-                  checked: custom,
+                  checked: mode === 'custom',
                   onChange: () => update('mode', 'custom'),
                 }),
                 h(
@@ -1349,20 +1385,20 @@ window.__ModuleLoader__.load({
           ),
         ),
 
-        h(
-          'div',
-          { className: 'dsh-pr-row' },
-          h(
-            'div',
-            { style: { flex: '1 1 260px', minWidth: 0 } },
-            h('div', { className: 'dsh-pr-row-title' }, custom ? t('settings.baseURL') : t('settings.provider')),
-            h('div', { className: 'dsh-pr-row-desc' }, custom ? t('settings.baseURLHint') : t('settings.providerHint')),
-          ),
-          h(
-            'div',
-            { className: 'dsh-pr-form', style: { flex: '0 1 620px' } },
-            custom
-              ? h(Field, {
+        custom
+          ? h(
+              'div',
+              { className: 'dsh-pr-row' },
+              h(
+                'div',
+                { style: { flex: '1 1 260px', minWidth: 0 } },
+                h('div', { className: 'dsh-pr-row-title' }, t('settings.baseURL')),
+                h('div', { className: 'dsh-pr-row-desc' }, t('settings.baseURLHint')),
+              ),
+              h(
+                'div',
+                { className: 'dsh-pr-form', style: { flex: '0 1 620px' } },
+                h(Field, {
                   id: 'dsh-pr-base-url',
                   label: t('settings.baseURL'),
                   hint: t('settings.baseURLHint'),
@@ -1375,47 +1411,63 @@ window.__ModuleLoader__.load({
                     placeholder: t('settings.baseURLPlaceholder'),
                     onChange: (event) => update('baseURL', event.target.value),
                   }),
-                })
-              : h(
+                }),
+              ),
+            )
+          : mode === 'composer'
+            ? null
+            : h(
+                'div',
+                { className: 'dsh-pr-row' },
+                h(
                   'div',
-                  { className: 'dsh-pr-inline' },
+                  { style: { flex: '1 1 260px', minWidth: 0 } },
+                  h('div', { className: 'dsh-pr-row-title' }, t('settings.provider')),
+                  h('div', { className: 'dsh-pr-row-desc' }, t('settings.providerHint')),
+                ),
+                h(
+                  'div',
+                  { className: 'dsh-pr-form', style: { flex: '0 1 620px' } },
                   h(
                     'div',
-                    { style: { flex: '1 1 180px' } },
-                    h(Field, {
-                      id: 'dsh-pr-provider',
-                      label: t('settings.provider'),
-                      children: h('input', {
+                    { className: 'dsh-pr-inline' },
+                    h(
+                      'div',
+                      { style: { flex: '1 1 180px' } },
+                      h(Field, {
                         id: 'dsh-pr-provider',
-                        className: 'dsh-pr-input',
-                        type: 'text',
-                        spellCheck: false,
-                        value: form.provider,
-                        placeholder: t('settings.providerPlaceholder'),
-                        onChange: (event) => update('provider', event.target.value),
+                        label: t('settings.provider'),
+                        children: h('input', {
+                          id: 'dsh-pr-provider',
+                          className: 'dsh-pr-input',
+                          type: 'text',
+                          spellCheck: false,
+                          value: form.provider,
+                          placeholder: t('settings.providerPlaceholder'),
+                          onChange: (event) => update('provider', event.target.value),
+                        }),
                       }),
-                    }),
-                  ),
-                  h(
-                    'div',
-                    { style: { flex: '1 1 180px' } },
-                    h(Field, {
-                      id: 'dsh-pr-model-account',
-                      label: t('settings.model'),
-                      children: h('input', {
+                    ),
+                    h(
+                      'div',
+                      { style: { flex: '1 1 180px' } },
+                      h(Field, {
                         id: 'dsh-pr-model-account',
-                        className: 'dsh-pr-input',
-                        type: 'text',
-                        spellCheck: false,
-                        value: form.model,
-                        placeholder: t('settings.modelPlaceholder'),
-                        onChange: (event) => update('model', event.target.value),
+                        label: t('settings.model'),
+                        children: h('input', {
+                          id: 'dsh-pr-model-account',
+                          className: 'dsh-pr-input',
+                          type: 'text',
+                          spellCheck: false,
+                          value: form.model,
+                          placeholder: t('settings.modelPlaceholder'),
+                          onChange: (event) => update('model', event.target.value),
+                        }),
                       }),
-                    }),
+                    ),
                   ),
                 ),
-          ),
-        ),
+              ),
 
         custom
           ? h(

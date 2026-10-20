@@ -66,6 +66,9 @@ jobs:
       - name: Update check
         run: node .verify/update-test.mjs
 
+      - name: Composer model mode
+        run: node .verify/composer-mode-test.mjs
+
       - name: Localization tests
         run: node .verify/locale-test.mjs
 
