@@ -86,6 +86,30 @@ node .verify/host-test.mjs    # Host 半：路由、票据/限流、密钥存储
 node .verify/client-test.mjs  # Client 半：模块工厂与两个插槽注册
 ```
 
+### 提交代码
+
+本目录已是完整的 Git 仓库，`origin` 指向 <https://github.com/KukaNo996/dsh-promt-refine>，默认分支 `main`。
+
+```bash
+git status              # 查看改动
+git add -A -- . ':!.workbuddy'   # 或按文件单独 add
+git commit -m "fix: 说明改了什么"
+git push origin main
+```
+
+- **Windows 已配置本地代理**：仓库级 `http.proxy = http://127.0.0.1:7897`（Clash 等本地代理端口）。若你的代理端口不同，执行：
+
+  ```bash
+  git config --local http.proxy http://127.0.0.1:<你的端口>
+  git config --local https.proxy http://127.0.0.1:<你的端口>
+  ```
+
+  网络恢复直连后可用 `git config --local --unset http.proxy` 与 `--unset https.proxy` 去掉。
+- **凭据**：Git Credential Manager 已保存 GitHub 账号，推送时通常无需再次输入；若失效执行 `git push` 按提示登录即可。
+- **提交身份**：已在本仓库配置 `user.name=KukaNo996`、`user.email=1274666494@qq.com`。
+- **换行**：`core.autocrlf=false`，避免 Windows 下把整仓文件改成 CRLF 产生无意义 diff。
+- `.workbuddy/`、`*.tgz`、`node_modules/` 已在 `.gitignore` 中忽略，不会被误提交。
+
 ## 已知限制
 
 - 优化与撤回以**纯文本**重写草稿；含文件/会话引用芯片时优化按钮会禁用（撤回也只恢复文本）。
