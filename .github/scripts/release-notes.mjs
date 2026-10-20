@@ -47,7 +47,7 @@ const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const changelog = await changelogSection(version)
 
 const lines = [
-  `## dsh-promt-refine v${version}`,
+  `## dsh-prompt-refine v${version}`,
   '',
   pkg.description,
   '',
@@ -64,19 +64,19 @@ lines.push(
   '### 安装',
   '',
   '```text',
-  `plugin_manager install_bundle target=dsh-promt-refine@${version}`,
+  `plugin_manager install_bundle target=dsh-prompt-refine@${version}`,
   '```',
   '',
   '或下载本页附带的 `.tgz` 与 `.sha256`，校验后从本地安装：',
   '',
   '```text',
-  `plugin_manager install_bundle target=<下载目录>/dsh-promt-refine-${version}.tgz`,
+  `plugin_manager install_bundle target=<下载目录>/dsh-prompt-refine-${version}.tgz`,
   '```',
   '',
   '### 校验',
   '',
   '```bash',
-  `sha256sum -c dsh-promt-refine-${version}.tgz.sha256`,
+  `sha256sum -c dsh-prompt-refine-${version}.tgz.sha256`,
   '```',
 )
 

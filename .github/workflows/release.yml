@@ -142,10 +142,10 @@ jobs:
       # broken release. The Release above is already created at this point, so the
       # job can be re-run or the tag re-pushed without losing the tarball.
       #
-      # One-time npm setup (https://www.npmjs.com/package/dsh-promt-refine/access
+      # One-time npm setup (https://www.npmjs.com/package/dsh-prompt-refine/access
       # -> Trusted Publishers -> Add -> GitHub Actions):
       #   Organization or user : KukaNo996
-      #   Repository           : dsh-promt-refine
+      #   Repository           : dsh-prompt-refine
       #   Workflow filename    : release.yml      <-- FILE NAME ONLY, no path
       #   Environment name     : (leave empty)
       # npm matches the workflow by file name, so entering

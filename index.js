@@ -1,5 +1,5 @@
 /**
- * Host half of the "dsh-promt-refine" bundle.
+ * Host half of the "dsh-prompt-refine" bundle.
  *
  * Responsibilities:
  * - Own the persisted refinement settings (model / endpoint / API key) in the DSH home directory.
@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path'
 /** Services this plugin needs to serve the browser half. */
 export const inject = ['webServer']
 
-const ROUTE_BASE = '/dsh-promt-refine'
+const ROUTE_BASE = '/dsh-prompt-refine'
 const MAX_BODY_BYTES = 1_000_000
 const MAX_INPUT_CHARS = 20_000
 const DEFAULT_TIMEOUT_MS = 120_000
@@ -30,7 +30,7 @@ const DISCONNECT_GRACE_MS = 2_000
 const RATE_WINDOW_MS = 60_000
 const RATE_MAX_CALLS = 10
 /** Credential reference used when the Host offers a writable credential store. */
-const CREDENTIAL_REF = 'DSH_PROMT_REFINE_API_KEY'
+const CREDENTIAL_REF = 'DSH_PROMPT_REFINE_API_KEY'
 /** Candidate drafts generated and scored per optimize call when evaluation is on. */
 const MAX_CANDIDATES = 5
 
@@ -131,7 +131,41 @@ class HttpError extends Error {
 /** Resolve the durable settings file under the DSH home directory. */
 function settingsPath() {
   const home = process.env.DSH_HOME || join(homedir(), '.dsh')
-  return join(home, 'dsh-promt-refine', 'settings.json')
+  return join(home, 'dsh-prompt-refine', 'settings.json')
+}
+
+/**
+ * Legacy locations written by earlier releases, when the package name still had
+ * the "promt" typo. Renaming the package moved both the settings directory and
+ * the credential reference, and an in-place upgrade must not silently drop the
+ * user's configuration or API key.
+ */
+const LEGACY_SETTINGS_NAME = 'dsh-promt-refine'
+const LEGACY_CREDENTIAL_REF = 'DSH_PROMT_REFINE_API_KEY'
+
+function legacySettingsPath() {
+  const home = process.env.DSH_HOME || join(homedir(), '.dsh')
+  return join(home, LEGACY_SETTINGS_NAME, 'settings.json')
+}
+
+/** Copy the legacy settings file forward once, then leave the old one alone. */
+async function migrateLegacySettings() {
+  const target = settingsPath()
+  try {
+    await readFile(target, 'utf8')
+    return // already migrated or created by this build
+  } catch {
+    // fall through to the legacy read
+  }
+  try {
+    const legacy = await readFile(legacySettingsPath(), 'utf8')
+    await mkdir(dirname(target), { recursive: true, mode: 0o700 })
+    await writeFile(target, legacy, { encoding: 'utf8', mode: 0o600 })
+    await restrictSettingsFile(target)
+    console.info('[dsh-prompt-refine] migrated settings from', legacySettingsPath())
+  } catch {
+    // No legacy file: a fresh install.
+  }
 }
 
 function asString(value, fallback) {
@@ -214,14 +248,32 @@ function keyStorage(ctx) {
   return credentialService(ctx) ? 'credential' : 'file'
 }
 
+/**
+ * Read the API key, falling back to the pre-rename credential reference so an
+ * in-place upgrade keeps the key the user already stored.
+ */
 async function readStoredKey(ctx, settings) {
   const service = credentialService(ctx)
   if (service) {
-    try {
-      const resolved = await service.resolve(CREDENTIAL_REF)
-      if (resolved && resolved.value) return resolved.value
-    } catch {
-      // Fall through to the legacy file value so an upgrade never loses a key.
+    for (const ref of [CREDENTIAL_REF, LEGACY_CREDENTIAL_REF]) {
+      try {
+        const resolved = await service.resolve(ref)
+        if (resolved && resolved.value) {
+          // Re-home the legacy key under the current reference, best effort.
+          if (ref !== CREDENTIAL_REF) {
+            try {
+              await service.set(CREDENTIAL_REF, resolved.value)
+              await service.unset(ref)
+              console.info('[dsh-prompt-refine] migrated API key from the legacy credential reference')
+            } catch {
+              // Reading still works; the next save will write the new reference.
+            }
+          }
+          return resolved.value
+        }
+      } catch {
+        // Try the next reference, then the file value.
+      }
     }
   }
   return settings.apiKey || ''
@@ -579,7 +631,7 @@ function sendJson(res, status, value) {
 function assertSameOriginWrite(req) {
   const method = (req.method || 'GET').toUpperCase()
   if (method === 'GET' || method === 'HEAD') return
-  if (req.headers['x-dsh-promt-refine'] !== '1') {
+  if (req.headers['x-dsh-prompt-refine'] !== '1') {
     throw new HttpError(403, 'forbidden', '缺少插件请求标记。')
   }
   const origin = req.headers.origin
@@ -787,7 +839,7 @@ function handleStatus(ctx, res, ticketValue) {
     const key = await readStoredKey(ctx, settings)
     sendJson(res, 200, {
       ok: true,
-      plugin: 'dsh-promt-refine',
+      plugin: 'dsh-prompt-refine',
       ticket: ticketValue,
       mode: settings.mode,
       hasApiKey: Boolean(key),
@@ -804,7 +856,7 @@ function createHandler(ctx, options) {
   const inFlight = new Set()
 
   function requireTicket(req) {
-    const presented = req.headers['x-dsh-promt-refine-ticket']
+    const presented = req.headers['x-dsh-prompt-refine-ticket']
     if (typeof presented !== 'string' || presented.length !== ticketValue.length) {
       throw new HttpError(403, 'forbidden', '缺少插件访问凭据，请刷新页面后重试。')
     }
@@ -863,7 +915,7 @@ function createHandler(ctx, options) {
       const message = error instanceof Error ? error.message : String(error)
       if (!(error instanceof HttpError)) {
         // Keep the browser side useful without leaking a stack trace.
-        console.error('[dsh-promt-refine]', error)
+        console.error('[dsh-prompt-refine]', error)
       }
       if (!res.headersSent) {
         sendJson(res, status, {
@@ -878,6 +930,17 @@ function createHandler(ctx, options) {
 
 /** Mount the Host half: one prefix route serving the browser half. */
 export function apply(ctx) {
+  // One-shot rename migration: finish before any request can read settings.
+  ctx.effect(() => {
+    let disposed = false
+    void migrateLegacySettings().catch((error) => {
+      if (!disposed) console.warn('[dsh-prompt-refine] settings migration skipped:', error?.message ?? error)
+    })
+    return () => {
+      disposed = true
+    }
+  }, 'dsh-prompt-refine: settings migration')
+
   ctx.effect(() =>
     ctx.webServer.register({
       kind: 'prefix',

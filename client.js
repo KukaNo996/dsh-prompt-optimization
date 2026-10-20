@@ -1,5 +1,5 @@
 /**
- * Browser half of the "dsh-promt-refine" bundle.
+ * Browser half of the "dsh-prompt-refine" bundle.
  *
  * Registers two slots:
  * - `conversation.input.right`: the Optimize / Undo control inside the composer toolbar,
@@ -12,13 +12,13 @@
  * `useInput` and `inputActions` (`setDraft`), never the DOM.
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-promt-refine',
+  id: 'dsh-prompt-refine',
   factory(require) {
     const React = require('react')
     const h = React.createElement
 
-    const NS = 'dsh-promt-refine'
-    const ROUTE = '/dsh-promt-refine'
+    const NS = 'dsh-prompt-refine'
+    const ROUTE = '/dsh-prompt-refine'
 
     // ---------------------------------------------------------------------
     // Localized copy
@@ -355,7 +355,7 @@ window.__ModuleLoader__.load({
       if (!force && ticketPromise) return ticketPromise
       ticketPromise = fetch(apiUrl('/status'), {
         credentials: 'same-origin',
-        headers: { 'x-dsh-promt-refine': '1' },
+        headers: { 'x-dsh-prompt-refine': '1' },
       })
         .then((response) => (response.ok ? response.json() : null))
         .then((payload) => (payload && typeof payload.ticket === 'string' ? payload.ticket : null))
@@ -387,8 +387,8 @@ window.__ModuleLoader__.load({
           ...init,
           headers: {
             'content-type': 'application/json',
-            'x-dsh-promt-refine': '1',
-            ...(ticket ? { 'x-dsh-promt-refine-ticket': ticket } : {}),
+            'x-dsh-prompt-refine': '1',
+            ...(ticket ? { 'x-dsh-prompt-refine-ticket': ticket } : {}),
             ...(init.headers || {}),
           },
         })
@@ -1521,13 +1521,13 @@ window.__ModuleLoader__.load({
           try {
             disposers.push(locale.register(NS, id, dictionary))
           } catch (error) {
-            console.warn('[dsh-promt-refine] locale register failed for', id, error)
+            console.warn('[dsh-prompt-refine] locale register failed for', id, error)
           }
         }
         return () => {
           for (const dispose of disposers) dispose()
         }
-      }, 'dsh-promt-refine: dictionaries')
+      }, 'dsh-prompt-refine: dictionaries')
 
       const t = locale.bind(NS)
 
@@ -1582,7 +1582,7 @@ window.__ModuleLoader__.load({
         ctx.slots.register(
           {
             name: 'conversation.input.right',
-            id: 'dsh-promt-refine',
+            id: 'dsh-prompt-refine',
             order: 20,
             locale: NS,
             inject: () => ({ translate, hooks: { useLocale } }),
@@ -1595,7 +1595,7 @@ window.__ModuleLoader__.load({
         ctx.slots.register(
           {
             name: 'settings.section',
-            id: 'dsh-promt-refine',
+            id: 'dsh-prompt-refine',
             order: 50,
             label: () => translate('settings.nav'),
             locale: NS,

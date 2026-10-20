@@ -1,5 +1,5 @@
 /**
- * Integration harness for the dsh-promt-refine Host half.
+ * Integration harness for the dsh-prompt-refine Host half.
  * Runs the plugin's real route handler against fake ctx services, a temp DSH_HOME,
  * a local mock OpenAI-compatible server, and a fake LLM stream.
  */
@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
 
-const tempHome = await mkdtemp(join(tmpdir(), 'dsh-promt-refine-test-'))
+const tempHome = await mkdtemp(join(tmpdir(), 'dsh-prompt-refine-test-'))
 process.env.DSH_HOME = tempHome
 
 /** Fake Cordis context with exactly the services the Host half reads. */
@@ -65,8 +65,8 @@ function makeReq(method, url, body, headers) {
   req.socket = { remoteAddress: '127.0.0.1' }
   const isStatus = url.endsWith('/status')
   req.headers = {
-    'x-dsh-promt-refine': '1',
-    ...(isStatus ? {} : { 'x-dsh-promt-refine-ticket': activeTicket || '' }),
+    'x-dsh-prompt-refine': '1',
+    ...(isStatus ? {} : { 'x-dsh-prompt-refine-ticket': activeTicket || '' }),
     ...(headers || {}),
   }
   for (const [name, value] of Object.entries(req.headers)) {
@@ -97,7 +97,7 @@ async function call(handler, method, url, body, headers) {
 async function refreshTicket(handler) {
   activeTicket = null
   const { res, state } = makeRes()
-  await handler(makeReq('GET', '/dsh-promt-refine/status'), res)
+  await handler(makeReq('GET', '/dsh-prompt-refine/status'), res)
   try {
     const payload = JSON.parse(state.body)
     if (payload && typeof payload.ticket === 'string') activeTicket = payload.ticket
@@ -172,40 +172,40 @@ const ctx = makeContext({
 })
 plugin.apply(ctx)
 const handler = ctx.get('__route').handler
-check('route mounted with prefix kind', ctx.get('__route').kind === 'prefix' && ctx.get('__route').path === '/dsh-promt-refine')
+check('route mounted with prefix kind', ctx.get('__route').kind === 'prefix' && ctx.get('__route').path === '/dsh-prompt-refine')
 
 // --- 1. status -------------------------------------------------------------
-let response = await call(handler, 'GET', '/dsh-promt-refine/status')
+let response = await call(handler, 'GET', '/dsh-prompt-refine/status')
 check('status 200 + ok', response.status === 200 && response.body.ok === true, response)
 check('status issues a request ticket', typeof response.body.ticket === 'string' && response.body.ticket.length >= 32, response.body)
 check('status reports account mode by default', response.body.mode === 'account', response.body)
 check('showLabel defaults to false (icon only)', response.body.showLabel === false, response.body)
 
 // --- 1a. ticket and origin gates -------------------------------------------
-response = await call(handler, 'GET', '/dsh-promt-refine/settings', undefined, { 'x-dsh-promt-refine-ticket': '' })
+response = await call(handler, 'GET', '/dsh-prompt-refine/settings', undefined, { 'x-dsh-prompt-refine-ticket': '' })
 check('settings without ticket rejected 403', response.status === 403 && response.body.error.code === 'forbidden', response)
-response = await call(handler, 'GET', '/dsh-promt-refine/settings', undefined, { 'x-dsh-promt-refine-ticket': 'x'.repeat(activeTicket.length) })
+response = await call(handler, 'GET', '/dsh-prompt-refine/settings', undefined, { 'x-dsh-prompt-refine-ticket': 'x'.repeat(activeTicket.length) })
 check('settings with wrong ticket rejected 403', response.status === 403, response)
-response = await call(handler, 'POST', '/dsh-promt-refine/settings', { settings: {} }, { origin: 'https://evil.example' })
+response = await call(handler, 'POST', '/dsh-prompt-refine/settings', { settings: {} }, { origin: 'https://evil.example' })
 check('cross-origin write rejected 403', response.status === 403, response)
 
 // --- 1b. label preference round-trips --------------------------------------
 // 默认关闭（仅图标）；开启后同时显示「优化提示词」和「撤回」文字。
-response = await call(handler, 'POST', '/dsh-promt-refine/settings', {
+response = await call(handler, 'POST', '/dsh-prompt-refine/settings', {
   settings: { mode: 'account', provider: '', model: '', showLabel: true },
 })
 check('showLabel=true saved', response.status === 200 && response.body.showLabel === true, response)
-response = await call(handler, 'GET', '/dsh-promt-refine/settings')
+response = await call(handler, 'GET', '/dsh-prompt-refine/settings')
 check('showLabel=true read back', response.body.showLabel === true, response.body)
-response = await call(handler, 'POST', '/dsh-promt-refine/settings', {
+response = await call(handler, 'POST', '/dsh-prompt-refine/settings', {
   settings: { mode: 'account', provider: '', model: '', showLabel: false },
 })
 check('showLabel=false saved', response.status === 200 && response.body.showLabel === false, response)
-response = await call(handler, 'GET', '/dsh-promt-refine/settings')
+response = await call(handler, 'GET', '/dsh-prompt-refine/settings')
 check('showLabel=false read back', response.body.showLabel === false, response.body)
 
 // --- 2. save custom settings ----------------------------------------------
-response = await call(handler, 'POST', '/dsh-promt-refine/settings', {
+response = await call(handler, 'POST', '/dsh-prompt-refine/settings', {
   settings: {
     mode: 'custom',
     baseURL: `http://127.0.0.1:${mockPort}/v1`,
@@ -219,12 +219,12 @@ check('save custom settings 200', response.status === 200, response)
 check('api key stored masked', response.body.hasApiKey === true && response.body.apiKeyMasked.includes('7890'), response.body)
 check('mode is custom', response.body.mode === 'custom', response.body)
 
-const stored = JSON.parse(await readFile(join(tempHome, 'dsh-promt-refine', 'settings.json'), 'utf8'))
+const stored = JSON.parse(await readFile(join(tempHome, 'dsh-prompt-refine', 'settings.json'), 'utf8'))
 check('settings persisted non-secret fields', stored.model === 'local-test-model' && stored.mode === 'custom', stored)
 check('saved key lives in the credential store', [...credentials.store.values()].includes('sk-test-1234567890'), [...credentials.store.entries()])
 
 // --- 3. optimize through custom endpoint ----------------------------------
-response = await call(handler, 'POST', '/dsh-promt-refine/optimize', { text: '帮我写一个登录页' })
+response = await call(handler, 'POST', '/dsh-prompt-refine/optimize', { text: '帮我写一个登录页' })
 check('custom optimize 200', response.status === 200, response)
 check('custom optimize text cleaned', response.body.optimized.startsWith('# 优化后的提示词'), response.body)
 check('custom endpoint received system + user', mockRequests.length === 1 && mockRequests[0].parsed.messages.length === 2, mockRequests)
@@ -254,13 +254,13 @@ plugin.apply(accountCtx)
 const accountHandler = accountCtx.get('__route').handler
 await refreshTicket(accountHandler)
 
-response = await call(accountHandler, 'POST', '/dsh-promt-refine/settings', {
+response = await call(accountHandler, 'POST', '/dsh-prompt-refine/settings', {
   settings: { mode: 'account', provider: '', model: '' },
   clearApiKey: true,
 })
 check('switch back to account mode', response.status === 200 && response.body.mode === 'account', response)
 
-response = await call(accountHandler, 'POST', '/dsh-promt-refine/optimize', {
+response = await call(accountHandler, 'POST', '/dsh-prompt-refine/optimize', {
   text: '把这段需求整理成提示词',
   sessionId: 'session-test',
 })
@@ -270,42 +270,42 @@ check('account session model preferred', seenOptions?.provider === 'deepseek-acc
 check('account call carries system + user content', typeof seenOptions?.system === 'string' && Array.isArray(seenOptions?.messages?.[0]?.content), seenOptions?.messages)
 
 // --- 5. default selection when no session --------------------------------
-response = await call(accountHandler, 'POST', '/dsh-promt-refine/optimize', { text: '没有会话 id' })
+response = await call(accountHandler, 'POST', '/dsh-prompt-refine/optimize', { text: '没有会话 id' })
 check('account default selection used', response.status === 200 && seenOptions?.model === 'deepseek-flash', { response, seenOptions })
 
 // --- 6. validation + errors ----------------------------------------------
 await refreshTicket(handler)
-response = await call(handler, 'POST', '/dsh-promt-refine/optimize', { text: '   ' })
+response = await call(handler, 'POST', '/dsh-prompt-refine/optimize', { text: '   ' })
 check('empty input rejected 400', response.status === 400 && response.body.error.code === 'empty_input', response)
 
-response = await call(handler, 'POST', '/dsh-promt-refine/optimize', { text: 'x' }, { 'x-dsh-promt-refine': '' })
+response = await call(handler, 'POST', '/dsh-prompt-refine/optimize', { text: 'x' }, { 'x-dsh-prompt-refine': '' })
 check('missing CSRF marker rejected 403', response.status === 403 && response.body.error.code === 'forbidden', response)
 await refreshTicket(handler)
 
-response = await call(handler, 'GET', '/dsh-promt-refine/settings')
+response = await call(handler, 'GET', '/dsh-prompt-refine/settings')
 check('GET settings with ticket works', response.status === 200, response)
 
-response = await call(handler, 'POST', '/dsh-promt-refine/settings', { settings: { mode: 'custom', baseURL: '', model: '' } })
-response = await call(handler, 'POST', '/dsh-promt-refine/optimize', { text: 'x' })
+response = await call(handler, 'POST', '/dsh-prompt-refine/settings', { settings: { mode: 'custom', baseURL: '', model: '' } })
+response = await call(handler, 'POST', '/dsh-prompt-refine/optimize', { text: 'x' })
 check('missing base url rejected 400', response.status === 400 && response.body.error.code === 'missing_base_url', response)
 
-response = await call(handler, 'GET', '/dsh-promt-refine/nope')
+response = await call(handler, 'GET', '/dsh-prompt-refine/nope')
 check('unknown route 404', response.status === 404 && response.body.error.code === 'not_found', response)
 
 // --- 6b. credential store holds the key, file does not --------------------
-await call(handler, 'POST', '/dsh-promt-refine/settings', {
+await call(handler, 'POST', '/dsh-prompt-refine/settings', {
   settings: { mode: 'custom', baseURL: `http://127.0.0.1:${mockPort}/v1`, model: 'keep-key-model' },
   apiKey: 'sk-keep-me-0000',
 })
 check('key written to credential store', [...credentials.store.values()].includes('sk-keep-me-0000'), [...credentials.store.entries()])
-const persisted = JSON.parse(await readFile(join(tempHome, 'dsh-promt-refine', 'settings.json'), 'utf8'))
+const persisted = JSON.parse(await readFile(join(tempHome, 'dsh-prompt-refine', 'settings.json'), 'utf8'))
 check('plaintext key absent from settings.json', !persisted.apiKey, persisted)
-response = await call(handler, 'POST', '/dsh-promt-refine/settings', {
+response = await call(handler, 'POST', '/dsh-prompt-refine/settings', {
   settings: { mode: 'custom', baseURL: `http://127.0.0.1:${mockPort}/v1`, model: 'keep-key-model' },
   apiKey: '',
 })
 check('empty api key keeps stored key', response.body.hasApiKey === true && response.body.keyStorage === 'credential', response.body)
-response = await call(handler, 'POST', '/dsh-promt-refine/settings', {
+response = await call(handler, 'POST', '/dsh-prompt-refine/settings', {
   settings: { mode: 'custom', baseURL: `http://127.0.0.1:${mockPort}/v1`, model: 'keep-key-model' },
   clearApiKey: true,
 })
@@ -314,7 +314,7 @@ check('clear key removes credential', response.body.hasApiKey === false && crede
 // --- 6c. rate limit on model routes ---------------------------------------
 let rateLimited = null
 for (let index = 0; index < 12; index += 1) {
-  const attempt = await call(handler, 'POST', '/dsh-promt-refine/optimize', { text: '限流测试' })
+  const attempt = await call(handler, 'POST', '/dsh-prompt-refine/optimize', { text: '限流测试' })
   if (attempt.status === 429) {
     rateLimited = attempt
     break
@@ -361,10 +361,10 @@ plugin.apply(evalCtx)
 const evalHandler = evalCtx.get('__route').handler
 activeTicket = null
 await refreshTicket(evalHandler)
-await call(evalHandler, 'POST', '/dsh-promt-refine/settings', {
+await call(evalHandler, 'POST', '/dsh-prompt-refine/settings', {
   settings: { mode: 'custom', baseURL: `http://127.0.0.1:${judgePort}/v1`, model: 'judge-model', candidates: 3 },
 })
-response = await call(evalHandler, 'POST', '/dsh-promt-refine/optimize', { text: '多候选评估测试' })
+response = await call(evalHandler, 'POST', '/dsh-prompt-refine/optimize', { text: '多候选评估测试' })
 const draftCalls = judged.filter((entry) => !entry.system.includes('评审员'))
 const judgeCalls = judged.filter((entry) => entry.system.includes('评审员'))
 check('evaluation issues N draft calls', draftCalls.length === 3, { draftCalls: draftCalls.length })
@@ -379,11 +379,11 @@ check(
   Boolean(thirdCandidate) && response.body.optimized === thirdCandidate,
   { chosen: response.body.optimized?.slice(0, 40), expected: thirdCandidate?.slice(0, 40) },
 )
-response = await call(evalHandler, 'POST', '/dsh-promt-refine/settings', {
+response = await call(evalHandler, 'POST', '/dsh-prompt-refine/settings', {
   settings: { mode: 'custom', baseURL: `http://127.0.0.1:${judgePort}/v1`, model: 'judge-model', candidates: 1 },
 })
 const beforeSingle = judged.length
-response = await call(evalHandler, 'POST', '/dsh-promt-refine/optimize', { text: '单次优化' })
+response = await call(evalHandler, 'POST', '/dsh-prompt-refine/optimize', { text: '单次优化' })
 check('candidates=1 keeps single call', judged.length - beforeSingle === 1 && response.body.candidates === 1, { calls: judged.length - beforeSingle, body: response.body })
 
 // --- 6e. cancellation aborts the model call ------------------------------
@@ -407,12 +407,12 @@ plugin.apply(abortCtx)
 const abortHandler = abortCtx.get('__route').handler
 activeTicket = null
 await refreshTicket(abortHandler)
-await call(abortHandler, 'POST', '/dsh-promt-refine/settings', {
+await call(abortHandler, 'POST', '/dsh-prompt-refine/settings', {
   settings: { mode: 'custom', baseURL: `http://127.0.0.1:${slowPort}/v1`, model: 'slow-model' },
 })
 const abortedCall = (async () => {
   const { res, state } = makeRes()
-  const req = makeReq('POST', '/dsh-promt-refine/optimize', { text: '取消测试' })
+  const req = makeReq('POST', '/dsh-prompt-refine/optimize', { text: '取消测试' })
   const pending = abortHandler(req, res)
   setTimeout(() => req.emit('close'), 150)
   await pending
@@ -438,12 +438,12 @@ plugin.apply(failCtx)
 const failHandler = failCtx.get('__route').handler
 activeTicket = null
 await refreshTicket(failHandler)
-await call(failHandler, 'POST', '/dsh-promt-refine/settings', {
+await call(failHandler, 'POST', '/dsh-prompt-refine/settings', {
   settings: { mode: 'custom', baseURL: `http://127.0.0.1:${failingPort}/v1`, model: 'x' },
   clearApiKey: true,
 })
 await refreshTicket(failHandler)
-response = await call(failHandler, 'POST', '/dsh-promt-refine/optimize', { text: '触发错误' })
+response = await call(failHandler, 'POST', '/dsh-prompt-refine/optimize', { text: '触发错误' })
 check('upstream 500 becomes readable 502', response.status === 502 && response.body.error.message.includes('upstream exploded'), response)
 
 // --- cleanup ---------------------------------------------------------------
