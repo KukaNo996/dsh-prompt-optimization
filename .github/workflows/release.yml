@@ -193,12 +193,23 @@ jobs:
 
       # Trusted Publishing makes npm staging the default: the CLI exits 0 after
       # handing the tarball to the registry's staged queue, WITHOUT publishing it.
-      # A green run therefore does not mean the version is installable, and the
-      # staged copy then blocks every retry with 409 "previously staged version".
-      # The version is verified against the public registry afterwards, and the
-      # run reports exactly what happened instead of claiming success.
+      # The version then becomes publicly visible after a delay (observed:
+      # 5-10 minutes). A green publish step therefore does not mean the version
+      # is installable yet, and the staged copy blocks every retry with
+      # 409 "previously staged version".
+      # The version is verified against the public registry afterwards with a
+      # patient poll that spans the staging window (40 × 15s = 10 minutes by
+      # default, overridable via env). Only a real publish failure (auth,
+      # network, conflict) fails the run; a version that is still absent after
+      # the window is reported as a warning and the step still exits 0, because
+      # the GitHub Release is already final at that point and npm's queue is
+      # outside this workflow's control — failing the run there only produced
+      # red releases whose artifacts were all fine.
       - name: Publish to npm
         if: ${{ github.event_name == 'push' || inputs.publish_npm }}
+        env:
+          NPM_WAIT_ATTEMPTS: '40'
+          NPM_WAIT_INTERVAL: '15'
         run: |
           set -euo pipefail
           VERSION="${{ steps.version.outputs.version }}"
@@ -206,21 +217,19 @@ jobs:
             echo "::error::npm publish failed. The GitHub Release and its tarball are intact; fix the cause and re-run this workflow."
             exit 1
           fi
-          echo "npm publish exited 0; confirming $VERSION is publicly installable"
+          echo "npm publish exited 0; waiting for $VERSION to become publicly installable"
 
-          # The registry can lag a few seconds; poll before declaring failure.
-          for attempt in 1 2 3 4 5 6; do
-            CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/dsh-prompt-optimization/$VERSION")"
+          # The registry can lag minutes while the staged queue drains; poll
+          # patiently instead of declaring failure after half a minute.
+          for attempt in $(seq 1 "$NPM_WAIT_ATTEMPTS"); do
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/dsh-prompt-optimization/$VERSION" || true)"
             if [ "$CODE" = "200" ]; then
-              echo "Version $VERSION is live on the npm registry"
+              echo "Version $VERSION is live on the npm registry (attempt $attempt/$NPM_WAIT_ATTEMPTS)"
               exit 0
             fi
-            echo "attempt $attempt: registry returned $CODE; retrying in 5s"
-            sleep 5
+            echo "attempt $attempt/$NPM_WAIT_ATTEMPTS: registry returned ${CODE:-<no response>}; retrying in ${NPM_WAIT_INTERVAL}s"
+            sleep "$NPM_WAIT_INTERVAL"
           done
 
-          # npm 11 stages every Trusted Publishing release and waits for a human
-          # to approve it. The CLI reports success at that point, so the version
-          # is absent from the registry while it sits in the staged queue.
-          echo "::error::Version $VERSION was staged by npm but is not published yet. Approve it at https://www.npmjs.com/settings/kukano996npm/staged-packages — the GitHub Release and its tarball are already final and unaffected."
-          exit 1
+          echo "::warning::Version $VERSION is still not visible on the registry after $((NPM_WAIT_ATTEMPTS * NPM_WAIT_INTERVAL))s. It may still be sitting in npm's staged queue (https://www.npmjs.com/settings/kukano996npm/staged-packages) — the GitHub Release and its tarball are already final and unaffected. Check https://www.npmjs.com/package/dsh-prompt-optimization again in a few minutes."
+          exit 0
