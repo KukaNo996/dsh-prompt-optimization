@@ -278,7 +278,7 @@ node .verify/rename-migration-test.mjs # 改名迁移：设置与 API Key 无损
 node .verify/update-test.mjs          # 检查更新：源解析、版本比较、超时与鉴权（37 项）
 node .verify/composer-mode-test.mjs   # 跟随输入框模式（19 项）
 node .verify/disconnect-test.mjs      # 客户端断开必须被主机侧感知（5 项）
-node .verify/wait-budget-test.mjs     # 等待时长与中断（35 项）
+node .verify/wait-budget-test.mjs     # 等待时长与中断（34 项）
 python3 .verify/icon-weight.py        # 真实 16px 渲染下的图标视觉平衡
 ```
 

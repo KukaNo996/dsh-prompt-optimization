@@ -269,7 +269,7 @@ node .verify/rename-migration-test.mjs # Rename migration: settings and key surv
 node .verify/update-test.mjs          # Update check: source parsing, semver, timeout, auth (37 checks)
 node .verify/composer-mode-test.mjs   # Follow composer mode (19 checks)
 node .verify/disconnect-test.mjs      # A client disconnect must reach the Host (5 checks)
-node .verify/wait-budget-test.mjs     # Wait budget and cancellation (35 checks)
+node .verify/wait-budget-test.mjs     # Wait budget and cancellation (34 checks)
 python3 .verify/icon-weight.py        # Icon visual balance from a real 16px render
 ```
 

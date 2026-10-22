@@ -591,8 +591,8 @@ function normalizeSettings(raw, current) {
     candidates,
     updateCheckEnabled:
       typeof input.updateCheckEnabled === 'boolean' ? input.updateCheckEnabled : base.updateCheckEnabled === true,
-    // A malformed source is dropped on save rather than persisted, so the next
-    // check falls back to the built-in order instead of failing silently.
+    // A malformed source is persisted as typed; it is rejected later, when a
+    // check resolves it, so the built-in order is used instead of failing silently.
     updateSource: asString(input.updateSource, base.updateSource).trim(),
     contextAware: typeof input.contextAware === 'boolean' ? input.contextAware : base.contextAware === true,
     maxWaitSeconds: normalizeWaitSeconds(input.maxWaitSeconds, base.maxWaitSeconds),
