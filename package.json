@@ -1,6 +1,6 @@
 {
   "name": "dsh-prompt-optimization",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": false,
   "description": "DeepSeek Harness prompt-refinement plugin: rewrite a rough request into a clear, professional prompt, with one-click undo and a configurable model",
   "keywords": [
