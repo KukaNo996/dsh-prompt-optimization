@@ -5,9 +5,25 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![DSH](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1%2B-purple)
 
-Turn that one-line "just sort out my weekly report" into a professional prompt with a clear task, stated purpose, no ambiguity, a sensible plan, and precise acceptance criteria — in one click, and undo it just as easily.
+Turn that one-line "just sort out my weekly report" into a single prompt that is clear, directly executable and reusable — in one click, and undo it just as easily.
 
 This is a **DeepSeek Harness (DSH) Web plugin**. The *Optimize prompt* button sits in the composer toolbar right next to the model selector. The rewrite replaces the draft in place and can be reverted at any time. A dedicated settings page configures the model source, API key, and optional multi-candidate evaluation, supporting both online and local OpenAI-compatible endpoints.
+
+---
+
+## ⚠️ Version availability
+
+**Versions 1.3.2 through 1.3.5 are broken or partially broken. Do not stay on this range — upgrade to 1.4.0 or later.**
+
+| Version | Status | What actually happens |
+| --- | --- | --- |
+| 1.3.2 | **Unusable** | Introduced streaming output, but the model's first text chunk takes over 1.3 seconds to arrive. During that window the button just spins and not a single character appears in the composer, so the UI reads as *stuck* rather than *generating* — effectively a dead feature |
+| 1.3.3 / 1.3.4 | **Never released** | No npm package and no git tag exists for these versions; ignore them |
+| 1.3.5 | **Partially usable** | Fixed the frozen UI and the broken interrupt from 1.3.2, and added *click-to-interrupt* plus a *max wait duration*. But it still runs on 1.3.2's streaming mechanism, so the "looks stuck" problem described above remains |
+
+**Root cause and fix**: the streaming mechanism itself was **reverted wholesale in 1.4.0**. The plugin now waits for the request to finish and fills the composer in one shot, with a spinner and a *click to interrupt* hint covering the waiting period. 1.4.0 also keeps **every working feature from 1.3.5** (click-to-interrupt, max wait default 15 s / minimum 10 s), so **upgrading to 1.4.0+ loses nothing — it only fixes the experience**.
+
+> This range is no longer maintained. If you are still on 1.3.2–1.3.5, run *Check for updates* on the settings page or install the latest release directly. Earlier versions (1.3.1 and below) do not contain the streaming mechanism and work fine.
 
 ---
 
@@ -15,9 +31,9 @@ This is a **DeepSeek Harness (DSH) Web plugin**. The *Optimize prompt* button si
 
 Natural-language requests are usually vague: no context, no scope, no acceptance criteria, so the model has to guess. This plugin moves that guesswork into an explicit rewrite:
 
-- **Goals**: clear task / clear purpose / unambiguous / well structured / sensible plan / precise objective
-- **Principles**: stay faithful (never invent requirements or facts); when information is missing, mark an assumption or list at most three blocking questions — never answer with a question instead of a prompt
-- **Adaptive depth**: short requests get a short prompt; complex ones expand into *Objective / Background / Tasks / Constraints / Steps / Output format / Acceptance criteria*
+- **Rewrite goal**: normalize the whole input into a single prompt that is clear, directly executable and reusable
+- **Rewrite principle**: stay faithful to the original (keep the core intent and key information, invent no requirements and no facts); when something is missing, fill it in as a marked assumption inside the prompt, and never treat "ask the user back" as the output
+- **Delivered parts**: the result states its task goal, scenario, necessary constraints and expected output, closes its sentences properly, and stays proportional to the original's information content
 
 ---
 
@@ -32,9 +48,9 @@ Natural-language requests are usually vague: no context, no scope, no acceptance
 | **Local models** | Requests are made by the host side, so browser CORS never blocks Ollama / LM Studio / vLLM |
 | **Show hint text** | Off by default (icon only); when on, both "Optimize prompt" and "Undo" labels are shown |
 | **Empty-draft guidance** | Clicking optimize on an empty draft types a hint into the composer, holds it for 2 seconds, then erases it character by character; typing cancels it immediately |
-| **Classified rewriting** | The original is classified into one of six types first — knowledge, coding, writing, analysis, process, conversion — and the type decides what to ask |
-| **Question decomposition** | A question like "what is X" is never answered; it is decomposed into at least 3 analysis dimensions |
-| **Five length tiers** | Tier is picked from the original length and type: tiny / short / standard / detailed / full, never mixed within one rewrite |
+| **Structured delivery** | The rewritten prompt states its own goal, scenario, constraints and expected output, so it is reusable and executable |
+| **Question decomposition** | A question like "what is X" is never answered; it becomes an executable prompt that spells out what to cover and how to judge the answer |
+| **Self-contained output** | The delivered prompt stands on its own and never relies on "as mentioned above"; missing blocking details become marked assumptions inside the prompt |
 | **Cancellable optimization** | Click the spinner while the optimization runs to cancel it; the draft is restored |
 | **Maximum wait** | Longest wait for one optimization, 15 seconds by default and 10 seconds at minimum; it aborts on its own |
 | **Optimize with context (Beta)** | Optionally compress the current conversation first and rewrite against it, so the result fits your usual phrasing; off by default |
@@ -116,42 +132,34 @@ The **maximum wait** limits how long one optimization may take, **15 seconds by 
 It covers the whole operation — context compression, candidate generation and judging — not just the last model call.
 When it runs out the plugin stops and says so.
 
-### Classification
+### What the delivered prompt contains
 
-The original is classified before anything is written, and the type decides what the prompt should ask:
+The rewritten prompt must state four things — this is what makes it *reusable and executable*:
 
-| Type | Typical phrasings | What the rewrite spells out |
-| --- | --- | --- |
-| Knowledge | what is, why, difference, principle | Several analysis dimensions, answered systematically |
-| Coding | write, fix, refactor, error, performance | Inputs/outputs, language and framework, constraints, edge cases, acceptance |
-| Writing | copy, naming, email, script, translation | Audience, purpose, tone, length, taboos |
-| Analysis | compare, choose, evaluate, worth it | Candidates, evaluation dimensions, conclusion form, criteria |
-| Process | how to, getting started, steps | Phases, per-phase output, dependencies, checkpoints |
-| Conversion | summarise, shorten, rewrite, format | Target shape, what to keep, what to drop |
+| Part | Meaning |
+| --- | --- |
+| Task goal | What this prompt is meant to achieve |
+| Scenario | Who it is for and under what conditions it applies |
+| Necessary constraints | Boundaries, prohibitions and the technical conditions already given |
+| Expected output | The shape of the deliverable, its granularity and the criteria for judging it |
+
+On top of that: the original's core intent and key information are preserved (facts, numbers, names, links, stack and limits are kept verbatim; no requirement or deliverable is invented); vague, colloquial and self-referential wording is turned into explicit executable phrasing; and the prompt is self-contained, so it can be executed independently of this conversation and never leans on "as mentioned above".
 
 ### Questions are never answered
 
 When you ask "what is a closure" or "React or Vue", the plugin **never answers in an assistant voice**.
-It rewrites your question into a prompt that another AI can answer:
+It rewrites your question into a prompt another AI can execute — and it uses the four parts above to pin down
+*how deep to go* and *how to judge the answer*, instead of just polishing the question into a politer question.
 
-- The question must be split into **at least 3 analysis dimensions**; a polished one-line question does not count;
-- Six dimensions are available: definition, mechanism, taxonomy, applications, limits, practice;
-- The reader level, depth and whether sources are needed are stated explicitly;
-- Knowledge questions are written at the "detailed" tier even when the original is five characters long.
+### Length and form
 
-### Five length tiers
+The result is **complete and concise**: the length matches the information content of the original, without
+padding it out with headings, background or filler. Two hard rules on form:
 
-Length is decided by **the original length plus the question type**, so a short request is never expanded into a wall of text:
+- Sentences close properly: no unfinished lists, no dangling conjunctions, no trailing colon — the last sentence is a complete statement;
+- Only the rewritten prompt itself is returned, with no explanation, analysis or extra notes. The result is pasted straight into the composer, so its first character must already be the instruction, and it is never wrapped in a code fence.
 
-| Tier | Original | Output |
-| --- | --- | --- |
-| Tiny | under ~20 characters | 1–2 sentences; no headings, numbering or background |
-| Short | 20–50 characters, one ask | 2–4 sentences or up to 3 short requirements |
-| Standard | 50–150 characters, or 2–3 asks | 4–8 lines, at most 1–2 small headings |
-| Detailed | 150–400 characters, or a type that needs a systematic answer | Structured sections: goal / dimensions / constraints / output shape / acceptance |
-| Full | over 400 characters, or several dependent asks | The full structure with background, steps and checkpoints |
-
-Tiers are never mixed within one rewrite. Shorter is better by one tier than the original justifies.
+A missing but blocking detail is filled in place as *(assumption: …)* inside the prompt; no question or note is ever appended outside it.
 ### Optimizing with context (Beta)
 
 The **Optimize with context (Beta)** switch is **off by default**. When on, the plugin:

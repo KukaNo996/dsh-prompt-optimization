@@ -83,6 +83,15 @@ jobs:
       - name: Preamble stripping
         run: node .verify/preamble-test.mjs
 
+      # The three built-in instructions are the product. These two suites pin
+      # the wording the rewrite depends on (the contract) and prove the current
+      # instruction is the one actually sent to the model (the end-to-end path).
+      - name: Prompt instruction contract
+        run: node .verify/prompt-contract-test.mjs
+
+      - name: Prompt instruction end-to-end
+        run: node .verify/prompt-e2e-test.mjs
+
       - name: Localization tests
         run: node .verify/locale-test.mjs
 
